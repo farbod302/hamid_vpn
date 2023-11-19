@@ -5,9 +5,10 @@ const helper = require("../container/helper")
 const res_handler = require("../container/res_handler")
 var shortHash = require('short-hash');
 const { uid } = require("uid")
+const midels = require("../container/midel")
 
 
-router.post("/sign_new_client", async (req, res) => {
+router.post("/sign_new_client", midels.check_admin, async (req, res) => {
     const valid_inputs = helper.check_inputs(
         [
             "user_name",
@@ -34,7 +35,7 @@ router.post("/sign_new_client", async (req, res) => {
     new User(new_client).save()
     res_handler.succsess(res, "کاربر با موفقیت ثبت شد")
 })
-// router.post("/add_credit")
+router.post("/add_credit")
 // router.post("/block_client")
 // router.post("/add_new_server")
 // router.post("/edit_server")

@@ -6,7 +6,6 @@ const User = require("../db/users")
 const ForgetPassword = require("../db/forget_password")
 var shortHash = require('short-hash');
 const jwt = require("../container/jwt")
-var encryptor = require('simple-encryptor')(process.env.ENCRYPTOR);
 const { uid } = require("uid")
 
 router.post("/log_in", async (req, res) => {
@@ -17,8 +16,9 @@ router.post("/log_in", async (req, res) => {
         password: shortHash(password)
     })
     if (!selected_user) return res_handler.faild(res, "AUTH_FAIL")
-    const { access, name, user_id } = selected_user
-    res_handler.succsess(res, "خوش آمدید", jwt.sign({ access, name, user_id }))
+    const { access, name, user_id, active } = selected_user
+    if (!active)return  res_handler.faild(res, "BLOCKED_USER")
+        res_handler.succsess(res, "خوش آمدید", jwt.sign({ access, name, user_id }))
 })
 
 
@@ -54,8 +54,8 @@ router.post("/change_password_session", async (req, res) => {
     if (!selected_session) return res_handler.faild(res, "INVALID_SESSION")
     const { user_id } = selected_session
     await User.findOneAndUpdate({ user_id }, { $set: { password: shortHash(new_password) } })
-    await ForgetPassword.findOneAndUpdate({session_id},{$set:{used:true}})
-    res_handler.succsess(res,"رمز عبور شما با موفقیت تغییر کرد",{})
+    await ForgetPassword.findOneAndUpdate({ session_id }, { $set: { used: true } })
+    res_handler.succsess(res, "رمز عبور شما با موفقیت تغییر کرد", {})
 })
 
 
