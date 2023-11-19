@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "nodemon ."
   },
   "keywords": [],
   "author": "",
@@ -14,6 +14,9 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.1"
+    "mongoose": "^8.0.1",
+    "short-hash": "^1.0.0",
+    "simple-encryptor": "^4.0.0",
+    "uid": "^2.0.2"
   }
 }
