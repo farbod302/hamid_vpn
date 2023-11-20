@@ -146,7 +146,7 @@ const create_server_default = {
                     ],
                     "headers": {
                         "Host": [
-                            "speedtest.com"
+                            "speedtest.net"
                         ]
                     }
                 },

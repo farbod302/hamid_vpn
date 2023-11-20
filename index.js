@@ -33,7 +33,7 @@ const test = async () => {
     s.create_service({
         expire_date:0,
         flow:1,
-        name:"test"
+        name:"test_farbod_api"
     })
 
 }
