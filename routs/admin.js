@@ -4,6 +4,7 @@ const User = require("../db/users")
 const Transaction = require("../db/transaction")
 const Notification = require("../db/notification")
 const Server = require("../db/server")
+const Service = require("../db/service")
 const Plan = require("../db/plan")
 const helper = require("../container/helper")
 const res_handler = require("../container/res_handler")
@@ -11,6 +12,9 @@ var shortHash = require('short-hash');
 const { uid } = require("uid")
 const midels = require("../container/midel")
 
+
+
+//post requests
 
 router.post("/sign_new_client", midels.check_admin, async (req, res) => {
     const valid_inputs = helper.check_inputs(
@@ -118,6 +122,30 @@ router.post("/add_plan", midels.check_admin, async (req, res) => {
 })
 
 
+router.post("/edit_plan", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "dis",
+            "price",
+            "duration",
+            "volume",
+            "plan_id"
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    const { dis, price, duration, volume, plan_id } = req.body
+    const new_plan = {
+        plan_id,
+        dis, price, duration, volume,
+    }
+
+    await Plan.findOneAndReplace({ plan_id }, new_plan)
+    res_handler.succsess(res, "پلن ویرایش شد", {})
+
+
+})
+
+
 router.post("/add_server", midels.check_admin, async (req, res) => {
     const valid_inputs = helper.check_inputs(
         [
@@ -158,6 +186,47 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
 })
 
 
+
+router.post("/edit_server", midels.check_admin, async (req, res) => {
+
+    const valid_inputs = helper.check_inputs(
+        [
+            "url",
+            "user_name",
+            "password",
+            "dis",
+            "capacity",
+            "server_id"
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    const {
+        url,
+        user_name,
+        password,
+        dis,
+        capacity,
+        server_id
+    } = req.body
+    const cur_status = await Server.findOne({ server_id })
+    const { capacity_used } = cur_status
+    const new_server = {
+        url,
+        user_name,
+        password,
+        dis,
+        capacity,
+        server_id,
+        capacity_used
+    }
+
+    await Server.findOneAndReplace({ server_id }, new_server)
+    res_handler.succsess(res, "سرور ویرایش شد", {})
+
+
+})
+
+
 router.post("/send_notification", midels.check_admin, async (req, res) => {
     const valid_inputs = helper.check_inputs(
         [
@@ -177,6 +246,32 @@ router.post("/send_notification", midels.check_admin, async (req, res) => {
 })
 
 
+
+//get requests
+
+router.get("/clients", midels.check_admin, async (req, res) => {
+    const all_clients = await User.find()
+    res_handler.succsess(res, "", { users: all_clients })
+})
+
+
+router.get("/servers", midels.check_admin, async (req, res) => {
+    const all_servers = await Server.find()
+    res_handler.succsess(res, "", { servers: all_servers })
+})
+
+
+
+router.get("/plans", midels.check_admin, async (req, res) => {
+    const all_plans = await Plan.find()
+    res_handler.succsess(res, "", { plans: all_plans })
+})
+
+
+router.get("/services", midels.check_admin, async (req, res) => {
+    const all_services = await Service.find()
+    res_handler.succsess(res, "", { services: all_services })
+})
 
 
 
