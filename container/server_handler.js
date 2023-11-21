@@ -1,6 +1,5 @@
 const { default: axios } = require("axios")
 axios.defaults.withCredentials = true
-const qs = require("qs")
 const { uid } = require("uid")
 const Server = class {
     constructor(server) {
@@ -42,13 +41,13 @@ const Server = class {
         }
 
         const post_request = async (path, payload) => {
-            let  data  = await axios.post(`${this.url}/${path}`, payload, {
+            let data = await axios.post(`${this.url}/${path}`, payload, {
                 headers: {
                     "Cookie": cookie
                 }
             })
             console.log(data);
-            data=data.data
+            data = data.data
             const { obj } = data
             const is_array = obj.length
 
@@ -73,31 +72,51 @@ const Server = class {
 
     }
 
-    async create_service({ expire_date, flow, name }) {
+    async create_service({ expire_date, flow, name, protocol }) {
 
         const body = { ...create_server_default }
         body.total = flow * (1024 ** 3)
+        body.protocol = protocol
         body.expiryTime = expire_date
         body.settings.clients[0].id = crypto.randomUUID(32)
-        body.settings.clients[0].email =uid(9) 
+        body.settings.clients[0].email = uid(9)
         body.port = Math.floor(Math.random() * (49999 - 10000) + 10000)
         body.remark = name
         const clean_body = {}
         const keys = Object.keys(body)
         keys.forEach(k => {
             if (typeof body[k] === "object") {
-                clean_body[k] =JSON.stringify(body[k],null,2)
+                clean_body[k] = JSON.stringify(body[k], null, 2)
                 // clean_body[k] = body[k]
             } else {
                 clean_body[k] = body[k]
             }
         })
 
-        console.log(clean_body);
         const res = await this.post_request("panel/api/inbounds/add", clean_body)
-        console.log(res);
+        return res
 
     }
+
+    async edit_service({ expire_date, flow, name }) {
+
+    }
+
+    async edit_link({ service_id }) { }
+
+    async reset_service({ service_id }) { }
+
+    async get_service({ service_id }) { }
+
+    async get_service_qr_code({ service_id }) { }
+
+    async get_all_services() { }
+
+    async disable_enable_service({ service_id }) {
+
+    }
+
+
 }
 
 

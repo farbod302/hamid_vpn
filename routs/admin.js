@@ -11,6 +11,7 @@ const res_handler = require("../container/res_handler")
 var shortHash = require('short-hash');
 const { uid } = require("uid")
 const midels = require("../container/midel")
+const all_servers = require("../container/all_servers")
 
 
 
@@ -186,7 +187,6 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
 })
 
 
-
 router.post("/edit_server", midels.check_admin, async (req, res) => {
 
     const valid_inputs = helper.check_inputs(
@@ -244,6 +244,60 @@ router.post("/send_notification", midels.check_admin, async (req, res) => {
     new Notification(new_notification).save()
     res_handler.succsess(res, "اعلان جدید ارسال شد", {})
 })
+
+
+router.post("/add_service", midels.check_admin, async (req, res) => {
+
+    const valid_inputs = helper.check_inputs(
+        [
+            "server_id",
+            "plan_id",
+            "protocol",
+            "name",
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    const { server_id, plan_id, protocol, name } = req.body
+    const selected_plan = await Plan.findOne({ plan_id, active: true })
+    if (!selected_plan) return res_handler.faild(res, "INVALID_PLAN")
+    const { volume, duration } = selected_plan
+
+    const new_service = {
+        expire_date: Date.now() + duration,
+        flow: volume,
+        server_id,
+        protocol,
+        name
+    }
+    const result = await all_servers.create_service(new_service)
+    res_handler.succsess(res, "سرویس با موفقیت ایجاد شد", result)
+
+})
+
+
+router.post("/edit_service", midels.check_admin, async (req, res) => {
+
+})
+
+router.post("/disable_enable_service", midels.check_admin, async (req, res) => {
+
+})
+
+router.post("/change_service_server", midels.check_admin, async (req, res) => {
+
+})
+
+router.post("/change_link", midels.check_admin, async (req, res) => {
+
+})
+
+router.post("/reset_service",(req,res)=>{
+
+})
+
+
+
+
 
 
 

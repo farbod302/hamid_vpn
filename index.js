@@ -13,6 +13,7 @@ const cors = require("cors")
 
 const routs = require("./container/routs")
 const Server = require('./container/server_handler')
+const all_servers = require('./container/all_servers')
 const keys = Object.keys(routs)
 keys.forEach(key => app.use(key, routs[key]))
 
@@ -23,19 +24,4 @@ server.listen(port, () => { console.log(`server run on port ${port}`); })
 
 
 
-const test = async () => {
-    const s = new Server({
-        url: "https://test.wallbreaker.ir:8888",
-        user_name: "admin",
-        password: "admin"
-    })
-    await s.init_server()
-    s.create_service({
-        expire_date:0,
-        flow:1,
-        name:"test_farbod_api"
-    })
-
-}
-
-test()
+all_servers.init_all_servers()
