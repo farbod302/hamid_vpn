@@ -11,7 +11,8 @@ const res_handler = {
         "NEED_TO_WAIT":"ارسال پیامک بازیابی هر 2 دقیقه یک بار امکان پذیر است",
         "INVALID_SESSION":"شناسه تغییر پسورد نا معتبر است یا قبلا استفاده شده",
         "BLOCKED_USER":"حساب کاربری شما مسدود شده",
-        "INVALID_VALUES":"مقادیر وارد شده نامعتبر است"
+        "INVALID_VALUES":"مقادیر وارد شده نامعتبر است",
+        "INVALID_SERVICE":"سرویس مورد نظر یافت نشد"
     },
 
     succsess(res, msg, data) {

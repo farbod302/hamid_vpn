@@ -100,8 +100,8 @@ const Server = class {
 
     }
 
-    async edit_service_name({ name,server_id_on_server }) {
-        const cur_status=await this.get_all_services(server_id_on_server)
+    async edit_service_name({ name,service_id_on_server }) {
+        const cur_status=await this.get_service(service_id_on_server)
 
     }
 

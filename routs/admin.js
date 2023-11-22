@@ -257,8 +257,8 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
-    const { server_id, plan_id, protocol, name,user } = req.body
-console.log({user});
+    const { server_id, plan_id, protocol, name, user } = req.body
+    console.log({ user });
     const selected_plan = await Plan.findOne({ plan_id, active: true })
     if (!selected_plan) return res_handler.faild(res, "INVALID_PLAN")
     const { volume, duration } = selected_plan
@@ -272,19 +272,19 @@ console.log({user});
     }
 
     const result = await all_servers.create_service(new_service)
-    const {id,expiryTime}=result
-    const service_to_save={
-        service_id:uid(6),
-        service_id_on_server:id,
-        creator_id:req.body.user.user_id,
-        plan_id:plan_id,
+    const { id, expiryTime } = result
+    const service_to_save = {
+        service_id: uid(6),
+        service_id_on_server: id,
+        creator_id: req.body.user.user_id,
+        plan_id: plan_id,
         volume,
         name,
-        server_id:server_id,
+        server_id: server_id,
         protocol,
-        credit:selected_plan.price,
-        start_date:Date.now(),
-        end_date:expiryTime
+        credit: selected_plan.price,
+        start_date: Date.now(),
+        end_date: expiryTime
     }
 
     new Service(service_to_save).save()
@@ -304,6 +304,11 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
     if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
 
     const { service_id, name } = req.body
+
+    const selected_service = await Service.findOne({ service_id })
+    if (!selected_service) return res_handler.faild("INVALID_SERVICE")
+    const { server_id, service_id_on_server } = selected_service
+    console.log({ server_id, service_id_on_server });
 
 
 })

@@ -30,13 +30,13 @@ const all_servers = {
         })
         return result
     },
-    async edit_service_name({name,server_id,server_id_on_server}){
+    async edit_service_name({name,service_id_on_server}){
         const selected_server = this.servers.find(e => e.server_id === server_id)
         if(selected_server)return false
         const { server_class } = selected_server
 
         const result = await server_class.edit_service_name({
-            name,server_id_on_server
+            name,service_id_on_server
         })
 
         return result
