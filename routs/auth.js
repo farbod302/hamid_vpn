@@ -40,7 +40,6 @@ router.post("/forget_password", async (req, res) => {
         ip: req.ip
     }
     new ForgetPassword(new_session).save()
-    console.log(session_id);
     //send link with sms
     return res_handler.succsess(res, "لینک بازیابی رمزعبور به شما شماره تماس شما پیامک  شد")
 })

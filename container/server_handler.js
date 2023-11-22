@@ -1,5 +1,6 @@
 const { default: axios } = require("axios")
 axios.defaults.withCredentials = true
+const crypto=require("crypto")
 const { uid } = require("uid")
 const Server = class {
     constructor(server) {
@@ -13,7 +14,9 @@ const Server = class {
             username: this.user_name,
             password: this.password
         })
+
         const cookie = data.headers["set-cookie"].splice("session=")[1].split(";")[0]
+
         this.cookie = cookie
 
         const get_request = async (path) => {
@@ -46,7 +49,6 @@ const Server = class {
                     "Cookie": cookie
                 }
             })
-            console.log(data);
             data = data.data
             const { obj } = data
             const is_array = obj.length
@@ -78,7 +80,7 @@ const Server = class {
         body.total = flow * (1024 ** 3)
         body.protocol = protocol
         body.expiryTime = expire_date
-        body.settings.clients[0].id = crypto.randomUUID(32)
+        body.settings.clients[0].id = crypto.randomUUID()
         body.settings.clients[0].email = uid(9)
         body.port = Math.floor(Math.random() * (49999 - 10000) + 10000)
         body.remark = name
@@ -93,12 +95,13 @@ const Server = class {
             }
         })
 
-        const res = await this.post_request("panel/api/inbounds/add", clean_body)
-        return res
+        const data = await this.post_request("panel/api/inbounds/add", clean_body)
+        return data[0]
 
     }
 
-    async edit_service({ expire_date, flow, name }) {
+    async edit_service_name({ name,server_id_on_server }) {
+        const cur_status=await this.get_all_services(server_id_on_server)
 
     }
 
@@ -106,7 +109,10 @@ const Server = class {
 
     async reset_service({ service_id }) { }
 
-    async get_service({ service_id }) { }
+    async get_service({ service_id }) { 
+        const data=await this.get_request("/panel/api/inbounds/get/"+service_id)
+        return data
+    }
 
     async get_service_qr_code({ service_id }) { }
 

@@ -18,8 +18,9 @@ const all_servers = {
     },
 
     async create_service({ server_id, flow, expire_date, protocol, name }) {
+       
         const selected_server = this.servers.find(e => e.server_id === server_id)
-        if(selected_server)return
+        if(!selected_server)return false
         const { server_class } = selected_server
         const result = await server_class.create_service({
             expire_date,
@@ -27,7 +28,24 @@ const all_servers = {
             name,
             protocol
         })
+        return result
+    },
+    async edit_service_name({name,server_id,server_id_on_server}){
+        const selected_server = this.servers.find(e => e.server_id === server_id)
+        if(selected_server)return false
+        const { server_class } = selected_server
+
+        const result = await server_class.edit_service_name({
+            name,server_id_on_server
+        })
+
+        return result
+
+
     }
+
+
+    
 
 }
 

@@ -117,7 +117,7 @@ router.post("/add_plan", midels.check_admin, async (req, res) => {
         notification_id: uid(5),
         note: `پلن جدید :${dis} به پلن های فروش اضافه شد !`
     }
-    new_notification.save()
+    new Notification(new_notification).save()
     res_handler.succsess(res, "پلن جدید اضافه شد", {})
 
 })
@@ -181,7 +181,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
         notification_id: uid(5),
         note: `سرور جدید :${dis} به سرور ها اضافه شد !`
     }
-    new_notification.save()
+    new Notification(new_notification).save()
 
 
 })
@@ -257,25 +257,54 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
-    const { server_id, plan_id, protocol, name } = req.body
+    const { server_id, plan_id, protocol, name,user } = req.body
+console.log({user});
     const selected_plan = await Plan.findOne({ plan_id, active: true })
     if (!selected_plan) return res_handler.faild(res, "INVALID_PLAN")
     const { volume, duration } = selected_plan
 
     const new_service = {
-        expire_date: Date.now() + duration,
+        expire_date: Date.now() + (duration * 1000 * 60 * 60 * 24),
         flow: volume,
         server_id,
         protocol,
         name
     }
+
     const result = await all_servers.create_service(new_service)
+    const {id,expiryTime}=result
+    const service_to_save={
+        service_id:uid(6),
+        service_id_on_server:id,
+        creator_id:req.body.user.user_id,
+        plan_id:plan_id,
+        volume,
+        name,
+        server_id:server_id,
+        protocol,
+        credit:selected_plan.price,
+        start_date:Date.now(),
+        end_date:expiryTime
+    }
+
+    new Service(service_to_save).save()
+
     res_handler.succsess(res, "سرویس با موفقیت ایجاد شد", result)
 
 })
 
 
 router.post("/edit_service", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "service_id",
+            "name",
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+
+    const { service_id, name } = req.body
+
 
 })
 
@@ -291,7 +320,7 @@ router.post("/change_link", midels.check_admin, async (req, res) => {
 
 })
 
-router.post("/reset_service",(req,res)=>{
+router.post("/reset_service", (req, res) => {
 
 })
 
