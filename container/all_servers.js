@@ -89,8 +89,16 @@ const all_servers = {
         const result = await server_class.edit_link({ service_id_on_server, client })
         return result
 
-    }
+    },
+    
 
+    async reset_service({server_id,service_id_on_server,new_ex_date}){
+        const selected_server = this.servers.find(e => e.server_id === server_id)
+        if (!selected_server) return false
+        const { server_class } = selected_server
+        await server_class.reset_service({service_id_on_server,new_ex_date})
+        return {status:true}
+    }
 
 
 

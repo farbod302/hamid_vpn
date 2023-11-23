@@ -264,7 +264,7 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
     const { volume, duration } = selected_plan
 
     const new_service = {
-        expire_date: Date.now() + (duration * 1000 * 60 * 60 * 24),
+        expire_date: duration == 0 ? 0 : Date.now() + (duration * 1000 * 60 * 60 * 24),
         flow: volume,
         server_id,
         protocol,
@@ -315,9 +315,9 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         })
         if (result) return res_handler.succsess(res, "سرویس با موفقیت ویرایش شد", result)
     } else {
-        console.log("run");
         const server_cur_status = await all_servers.get_service_data({ server_id, service_id_on_server })
         const { expiryTime, total, protocol } = server_cur_status
+        // todo :calc data used before
         await all_servers.delete_service({ server_id, service_id_on_server })
         const result = await all_servers.create_service({
             server_id: new_server_id, flow: total / (1024 ** 3), expire_date: expiryTime, name, protocol
@@ -361,20 +361,36 @@ router.post("/change_link", midels.check_admin, async (req, res) => {
             "service_id",
         ], req.body || {}
     )
-    
+
     if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
-    const {  service_id } = req.body
+    const { service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
 
-    const {server_id,service_id_on_server}=selected_service
-    const result=await all_servers.change_link({server_id,service_id_on_server})
+    const { server_id, service_id_on_server } = selected_service
+    const result = await all_servers.change_link({ server_id, service_id_on_server })
     res_handler.succsess(res, "تغییرات با موفقیت انجام شد", result)
 
 
 
 })
 
-router.post("/reset_service", (req, res) => {
+router.post("/reset_service", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "service_id",
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    const { service_id } = req.body
+    const selected_service = await Service.findOne({ service_id })
+    const { server_id, service_id_on_server, plan_id } = selected_service
+    const selected_plan = await Plan.findOne({ plan_id })
+    const { duration } = selected_plan
+    const new_ex_date = duration == 0 ? 0 : Date.now() + (duration * 1000 * 60 * 60 * 24)
+    const result = await all_servers.reset_service({ server_id, service_id_on_server, new_ex_date })
+    res_handler.succsess(res, "سرویس تمدید شد", result)
+    await Service.findOneAndUpdate({ server_id }, { $set: { active: true } })
+
 
 })
 

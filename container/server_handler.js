@@ -78,11 +78,12 @@ const Server = class {
     async create_service({ expire_date, flow, name, protocol }) {
 
         const body = { ...create_server_default }
-        body.total = flow * (1024 ** 3)
+        body.total = 0
         body.protocol = protocol
         body.expiryTime = expire_date
         body.settings.clients[0].id = crypto.randomUUID()
         body.settings.clients[0].email = uid(9)
+        body.settings.clients[0].totalGB =flow * (1024 ** 3)
         body.port = Math.floor(Math.random() * (49999 - 10000) + 10000)
         body.remark = name
         const clean_body = {}
@@ -145,14 +146,23 @@ const Server = class {
                 settings: clients_to_send
             }
         ))
-        console.log({result});
+        return result
 
     }
 
-    async reset_service({ service_id }) { }
+    async reset_service({ service_id_on_server,new_ex_date }) { 
+        await this.post_request("panel/api/inbounds/resetAllClientTraffics/"+service_id_on_server)
+        const cur_status = await this.get_service({ service_id: service_id_on_server })
+        if (!cur_status) return false
+        const new_body = { ...cur_status }
+        const to_delete = ["id", "up", "down", "total", "clientStats"]
+        to_delete.forEach(e => delete new_body[e])
+        new_body["expiryTime"] = new_ex_date
+        const result = await this.post_request("panel/api/inbounds/update/" + service_id_on_server, this.clean_to_send(new_body))
+        return result[0] || false
+    }
 
     async get_service({ service_id }) {
-        console.log({ service_id });
         const data = await this.get_request("panel/api/inbounds/get/" + service_id)
         return data[0]
     }
