@@ -288,8 +288,8 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
     }
 
     new Service(service_to_save).save()
-
     res_handler.succsess(res, "سرویس با موفقیت ایجاد شد", result)
+    await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1 } })
 
 })
 
@@ -298,30 +298,79 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
     const valid_inputs = helper.check_inputs(
         [
             "service_id",
+            "server_id",
             "name",
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
 
-    const { service_id, name } = req.body
+    const { service_id, name, server_id: new_server_id } = req.body
 
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.faild("INVALID_SERVICE")
     const { server_id, service_id_on_server } = selected_service
-    console.log({ server_id, service_id_on_server });
+    if (server_id === new_server_id) {
+        const result = await all_servers.edit_service_name({
+            name, service_id_on_server, server_id
+        })
+        if (result) return res_handler.succsess(res, "سرویس با موفقیت ویرایش شد", result)
+    } else {
+        console.log("run");
+        const server_cur_status = await all_servers.get_service_data({ server_id, service_id_on_server })
+        const { expiryTime, total, protocol } = server_cur_status
+        await all_servers.delete_service({ server_id, service_id_on_server })
+        const result = await all_servers.create_service({
+            server_id: new_server_id, flow: total / (1024 ** 3), expire_date: expiryTime, name, protocol
+        })
+        if (!result) return res_handler.faild("UNKNOWN_ERROR")
+        const { id } = result
+        await Service.findOneAndUpdate({ server_id }, { $set: { service_id_on_server: id, server_id: new_server_id } })
+        await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: 1 } })
+        await Server.findOneAndUpdate({ server_id: new_server_id }, { $inc: { capacity: -1 } })
+        return res_handler.succsess(res, "سرویس با موفقیت ویرایش شد", result)
+
+    }
 
 
 })
 
 router.post("/disable_enable_service", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "service_id",
+            "op"
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    const { op, service_id } = req.body
+    const selected_service = await Service.findOne({ service_id })
+    if (!selected_service) return res_handler.faild("INVALID_SERVICE")
+    const { service_id_on_server, server_id } = selected_service
+    const result = await all_servers.disable_enable_service({ server_id, service_id_on_server, op })
+    res_handler.succsess(res, "تغییرات با موفقیت انجام شد", result)
+    await Service.findOneAndUpdate({ server_id }, { $set: { active: op } })
+
 
 })
 
-router.post("/change_service_server", midels.check_admin, async (req, res) => {
-
-})
 
 router.post("/change_link", midels.check_admin, async (req, res) => {
+
+    const valid_inputs = helper.check_inputs(
+        [
+            "service_id",
+        ], req.body || {}
+    )
+    
+    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    const {  service_id } = req.body
+    const selected_service = await Service.findOne({ service_id })
+
+    const {server_id,service_id_on_server}=selected_service
+    const result=await all_servers.change_link({server_id,service_id_on_server})
+    res_handler.succsess(res, "تغییرات با موفقیت انجام شد", result)
+
+
 
 })
 

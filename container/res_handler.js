@@ -12,7 +12,8 @@ const res_handler = {
         "INVALID_SESSION":"شناسه تغییر پسورد نا معتبر است یا قبلا استفاده شده",
         "BLOCKED_USER":"حساب کاربری شما مسدود شده",
         "INVALID_VALUES":"مقادیر وارد شده نامعتبر است",
-        "INVALID_SERVICE":"سرویس مورد نظر یافت نشد"
+        "INVALID_SERVICE":"سرویس مورد نظر یافت نشد",
+        "UNKNOWN_ERROR":"خطای ناشناخته"
     },
 
     succsess(res, msg, data) {

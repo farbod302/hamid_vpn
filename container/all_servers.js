@@ -18,9 +18,9 @@ const all_servers = {
     },
 
     async create_service({ server_id, flow, expire_date, protocol, name }) {
-       
+
         const selected_server = this.servers.find(e => e.server_id === server_id)
-        if(!selected_server)return false
+        if (!selected_server) return false
         const { server_class } = selected_server
         const result = await server_class.create_service({
             expire_date,
@@ -30,22 +30,69 @@ const all_servers = {
         })
         return result
     },
-    async edit_service_name({name,service_id_on_server}){
+    async edit_service_name({ name, server_id, service_id_on_server }) {
         const selected_server = this.servers.find(e => e.server_id === server_id)
-        if(selected_server)return false
+        if (!selected_server) return false
         const { server_class } = selected_server
 
         const result = await server_class.edit_service_name({
-            name,service_id_on_server
+            name, service_id_on_server
         })
 
         return result
 
 
+    },
+
+    async delete_service({ server_id, service_id_on_server }) {
+        const selected_server = this.servers.find(e => e.server_id === server_id)
+        if (!selected_server) return false
+        const { server_class } = selected_server
+        const result = await server_class.delete_service({
+            service_id_on_server
+        })
+        return result
+    },
+
+    async get_service_data({ server_id, service_id_on_server }) {
+        const selected_server = this.servers.find(e => e.server_id === server_id)
+        if (!selected_server) return false
+        const { server_class } = selected_server
+        const result = await server_class.get_service({
+            service_id: service_id_on_server
+        })
+        return result
+    },
+
+
+    async disable_enable_service({ server_id, service_id_on_server, op }) {
+        const selected_server = this.servers.find(e => e.server_id === server_id)
+        if (!selected_server) return false
+        const { server_class } = selected_server
+        const result = await server_class.disable_enable_service({
+            service_id_on_server, op
+        })
+        return result
+    },
+
+
+    async change_link({ server_id, service_id_on_server }) {
+
+        const selected_server = this.servers.find(e => e.server_id === server_id)
+        if (!selected_server) return false
+        const { server_class } = selected_server
+
+        const service = await this.get_service_data({ server_id, service_id_on_server })
+        const { settings } = service
+        const client = settings.clients
+
+        const result = await server_class.edit_link({ service_id_on_server, client })
+        return result
+
     }
 
 
-    
+
 
 }
 

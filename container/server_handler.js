@@ -1,6 +1,6 @@
 const { default: axios } = require("axios")
 axios.defaults.withCredentials = true
-const crypto=require("crypto")
+const crypto = require("crypto")
 const { uid } = require("uid")
 const Server = class {
     constructor(server) {
@@ -50,6 +50,7 @@ const Server = class {
                 }
             })
             data = data.data
+            if(!data.obj)return {data:data.success}
             const { obj } = data
             const is_array = obj.length
 
@@ -100,26 +101,75 @@ const Server = class {
 
     }
 
-    async edit_service_name({ name,service_id_on_server }) {
-        const cur_status=await this.get_service(service_id_on_server)
+    clean_to_send(body) {
+        const clean_body = {}
+        const keys = Object.keys(body)
+        keys.forEach(k => {
+            if (typeof body[k] === "object") {
+                clean_body[k] = JSON.stringify(body[k], null, 2)
+                // clean_body[k] = body[k]
+            } else {
+                clean_body[k] = body[k]
+            }
+        })
+        return clean_body
+    }
+
+    async edit_service_name({ name, service_id_on_server }) {
+        const cur_status = await this.get_service({ service_id: service_id_on_server })
+        if (!cur_status) return false
+        const new_body = { ...cur_status }
+        const to_delete = ["id", "up", "down", "total", "clientStats"]
+        to_delete.forEach(e => delete new_body[e])
+        new_body["remark"] = name
+        const result = await this.post_request("panel/api/inbounds/update/" + service_id_on_server, this.clean_to_send(new_body))
+        return result[0] || false
+    }
+
+
+    async delete_service({ service_id_on_server }) {
+        await this.post_request("panel/api/inbounds/del/" + service_id_on_server)
+        return true
+    }
+
+    async edit_link({ service_id_on_server, client }) {
+
+        const cur_id = client.id
+        const new_id = crypto.randomUUID()
+        const new_client = { ...client }
+        new_client.id = new_id
+        const clients_to_send = {clients:[{...new_client}]}
+        const result = await this.post_request("panel/api/inbounds/updateClient/" + cur_id, this.clean_to_send(
+            {
+                id: service_id_on_server,
+                settings: clients_to_send
+            }
+        ))
+        console.log({result});
 
     }
 
-    async edit_link({ service_id }) { }
-
     async reset_service({ service_id }) { }
 
-    async get_service({ service_id }) { 
-        const data=await this.get_request("/panel/api/inbounds/get/"+service_id)
-        return data
+    async get_service({ service_id }) {
+        console.log({ service_id });
+        const data = await this.get_request("panel/api/inbounds/get/" + service_id)
+        return data[0]
     }
 
     async get_service_qr_code({ service_id }) { }
 
     async get_all_services() { }
 
-    async disable_enable_service({ service_id }) {
-
+    async disable_enable_service({ service_id_on_server, op }) {
+        const cur_status = await this.get_service({ service_id: service_id_on_server })
+        if (!cur_status) return false
+        const new_body = { ...cur_status }
+        const to_delete = ["id", "up", "down", "total", "clientStats"]
+        to_delete.forEach(e => delete new_body[e])
+        new_body["enable"] = op
+        const result = await this.post_request("panel/api/inbounds/update/" + service_id_on_server, this.clean_to_send(new_body))
+        return result[0] || false
     }
 
 
