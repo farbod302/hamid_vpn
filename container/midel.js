@@ -17,6 +17,8 @@ const midels = {
         if (!token) return res_handler.faild(res, "INVALID_TOKEN")
         const token_data = jwt.verify(token)
         if (!token_data) return res_handler.faild(res, "INVALID_TOKEN")
+        req.body.user = token_data
+
         next()
     }
 

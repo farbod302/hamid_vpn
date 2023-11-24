@@ -380,6 +380,7 @@ router.post("/reset_service", midels.check_admin, async (req, res) => {
             "service_id",
         ], req.body || {}
     )
+
     if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
     const { service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
@@ -399,32 +400,6 @@ router.post("/reset_service", midels.check_admin, async (req, res) => {
 
 
 
-
-//get requests
-
-router.get("/clients", midels.check_admin, async (req, res) => {
-    const all_clients = await User.find()
-    res_handler.succsess(res, "", { users: all_clients })
-})
-
-
-router.get("/servers", midels.check_admin, async (req, res) => {
-    const all_servers = await Server.find()
-    res_handler.succsess(res, "", { servers: all_servers })
-})
-
-
-
-router.get("/plans", midels.check_admin, async (req, res) => {
-    const all_plans = await Plan.find()
-    res_handler.succsess(res, "", { plans: all_plans })
-})
-
-
-router.get("/services", midels.check_admin, async (req, res) => {
-    const all_services = await Service.find()
-    res_handler.succsess(res, "", { services: all_services })
-})
 
 
 

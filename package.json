@@ -17,6 +17,7 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.1",
+    "qrcode": "^1.5.3",
     "short-hash": "^1.0.0",
     "simple-encryptor": "^4.0.0",
     "uid": "^2.0.2"
