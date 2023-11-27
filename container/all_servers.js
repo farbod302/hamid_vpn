@@ -9,11 +9,16 @@ const all_servers = {
         const all_servers = await Server.find({ active: true })
         for (const server of all_servers) {
             const init_server = new ServerClass(server)
-            await init_server.init_server()
-            this.servers.push({
-                server_id: server.server_id,
-                server_class: init_server
-            })
+            try {
+                await init_server.init_server()
+                this.servers.push({
+                    server_id: server.server_id,
+                    server_class: init_server
+                })
+            }
+            catch {
+                continue    
+            }
         }
     },
 
@@ -90,14 +95,14 @@ const all_servers = {
         return result
 
     },
-    
 
-    async reset_service({server_id,service_id_on_server,new_ex_date}){
+
+    async reset_service({ server_id, service_id_on_server, new_ex_date }) {
         const selected_server = this.servers.find(e => e.server_id === server_id)
         if (!selected_server) return false
         const { server_class } = selected_server
-        await server_class.reset_service({service_id_on_server,new_ex_date})
-        return {status:true}
+        await server_class.reset_service({ service_id_on_server, new_ex_date })
+        return { status: true }
     }
 
 

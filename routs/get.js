@@ -64,8 +64,42 @@ router.get("/services", midels.check_client, async (req, res) => {
     const { user_id, access } = user
     const query = access == 1 ? {} : { creator_id: user_id }
 
-    const user_services = await Service.find(query)
-        
+    const user_services = await Service.aggregate([{ $match: query }, {
+        $lookup: {
+            from: "servers",
+            localField: "server_id",
+            foreignField: "server_id",
+            as: "server"
+        }
+    }])
+    const services_status = user_services.map(async service => {
+        const { server_id, service_id_on_server } = service
+        const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server })
+
+
+        return {
+            ...service,
+            server_side_data,
+        }
+    })
+
+    const compleat_data = await Promise.all(services_status)
+
+
+    const clean_data = compleat_data.map(service => {
+        const { name, server_side_data, server } = service
+        const { up, down, expiryTime: expiry_time, enable, port, settings } = server_side_data
+        const { totalGB } = settings.clients[0]
+        return {
+            name, server: server[0].dis, total_used: up + down, expiry_time, active: enable, port, total_volume: totalGB/(1024**3)
+        }
+
+
+    })
+
+    res_handler.success(res, "", clean_data)
+
+
 })
 
 

@@ -5,6 +5,9 @@ const helper = {
     check_inputs(require_inputs, body) {
         if (!body) return false
         const body_keys = Object.keys(body)
+        for(let key of body_keys){
+            if(!body[key])return false
+        }
         return require_inputs.every(input => body_keys.includes(input))
     },
     check_phone(phone) {
