@@ -18,7 +18,7 @@ router.post("/log_in", async (req, res) => {
     if (!selected_user) return res_handler.faild(res, "AUTH_FAIL")
     const { access, name, user_id, active } = selected_user
     if (!active)return  res_handler.faild(res, "BLOCKED_USER")
-        res_handler.succsess(res, "خوش آمدید", jwt.sign({ access, name, user_id }))
+        res_handler.success(res, "خوش آمدید", jwt.sign({ access, name, user_id }))
 })
 
 
@@ -41,7 +41,7 @@ router.post("/forget_password", async (req, res) => {
     }
     new ForgetPassword(new_session).save()
     //send link with sms
-    return res_handler.succsess(res, "لینک بازیابی رمزعبور به شما شماره تماس شما پیامک  شد")
+    return res_handler.success(res, "لینک بازیابی رمزعبور به شما شماره تماس شما پیامک  شد")
 })
 
 
@@ -54,7 +54,7 @@ router.post("/change_password_session", async (req, res) => {
     const { user_id } = selected_session
     await User.findOneAndUpdate({ user_id }, { $set: { password: shortHash(new_password) } })
     await ForgetPassword.findOneAndUpdate({ session_id }, { $set: { used: true } })
-    res_handler.succsess(res, "رمز عبور شما با موفقیت تغییر کرد", {})
+    res_handler.success(res, "رمز عبور شما با موفقیت تغییر کرد", {})
 })
 
 

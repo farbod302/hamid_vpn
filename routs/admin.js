@@ -42,7 +42,7 @@ router.post("/sign_new_client", midels.check_admin, async (req, res) => {
         name
     }
     new User(new_client).save()
-    res_handler.succsess(res, "کاربر با موفقیت ثبت شد")
+    res_handler.success(res, "کاربر با موفقیت ثبت شد")
 })
 
 
@@ -59,8 +59,8 @@ router.post("/add_credit", midels.check_admin, async (req, res) => {
     const { credit, user_id, user } = req.body
     const { user_id: creator } = user
     if (credit == 0) return res_handler.faild(res, "INVALID_VALUES")
-    await User.findOneAndUpdate({ user_id }, { $inc: { credit:+credit } })
-    res_handler.succsess(res, "موجودی با موفقیت تغییر کرذ", {})
+    await User.findOneAndUpdate({ user_id }, { $inc: { credit: +credit } })
+    res_handler.success(res, "موجودی با موفقیت تغییر کرذ", {})
 
     const new_transaction = {
         credit, creator, user_id, note: +credit > 0 ? "واریز" : "براشت", date: Date.now(), transaction_id: uid(8)
@@ -87,7 +87,7 @@ router.post("/block_client", midels.check_admin, async (req, res) => {
     if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
     const { active, user_id } = req.body
     await User.findOneAndUpdate({ user_id }, { $set: { active } })
-    res_handler.succsess(res, "وضعیت کاربر با موفقیت تغییر کرد", {})
+    res_handler.success(res, "وضعیت کاربر با موفقیت تغییر کرد", {})
 
 
 })
@@ -118,7 +118,7 @@ router.post("/add_plan", midels.check_admin, async (req, res) => {
         note: `پلن جدید :${dis} به پلن های فروش اضافه شد !`
     }
     new Notification(new_notification).save()
-    res_handler.succsess(res, "پلن جدید اضافه شد", {})
+    res_handler.success(res, "پلن جدید اضافه شد", {})
 
 })
 
@@ -141,7 +141,7 @@ router.post("/edit_plan", midels.check_admin, async (req, res) => {
     }
 
     await Plan.findOneAndReplace({ plan_id }, new_plan)
-    res_handler.succsess(res, "پلن ویرایش شد", {})
+    res_handler.success(res, "پلن ویرایش شد", {})
 
 
 })
@@ -168,13 +168,13 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
     const new_server = {
         url,
         user_name,
-        password,
+        password: helper.encrypt(password),
         dis,
         capacity,
         server_id: uid(5)
     }
     new Server(new_server).save()
-    res_handler.succsess(res, "سرور جدید اضافه شد", {})
+    res_handler.success(res, "سرور جدید اضافه شد", {})
     const new_notification = {
         resivers: ["all"],
         date: Date.now(),
@@ -182,6 +182,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
         note: `سرور جدید :${dis} به سرور ها اضافه شد !`
     }
     new Notification(new_notification).save()
+    all_servers.init_all_servers()
 
 
 })
@@ -213,7 +214,7 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
     const new_server = {
         url,
         user_name,
-        password,
+        password: helper.encrypt(password),
         dis,
         capacity,
         server_id,
@@ -221,8 +222,8 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
     }
 
     await Server.findOneAndReplace({ server_id }, new_server)
-    res_handler.succsess(res, "سرور ویرایش شد", {})
-
+    res_handler.success(res, "سرور ویرایش شد", {})
+    all_servers.init_all_servers()
 
 })
 
@@ -242,7 +243,7 @@ router.post("/send_notification", midels.check_admin, async (req, res) => {
         note: `‍پیام ادمین: ${note}`
     }
     new Notification(new_notification).save()
-    res_handler.succsess(res, "اعلان جدید ارسال شد", {})
+    res_handler.success(res, "اعلان جدید ارسال شد", {})
 })
 
 
@@ -258,7 +259,6 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
     )
     if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
     const { server_id, plan_id, protocol, name, user } = req.body
-    console.log({ user });
     const selected_plan = await Plan.findOne({ plan_id, active: true })
     if (!selected_plan) return res_handler.faild(res, "INVALID_PLAN")
     const { volume, duration } = selected_plan
@@ -288,7 +288,7 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
     }
 
     new Service(service_to_save).save()
-    res_handler.succsess(res, "سرویس با موفقیت ایجاد شد", result)
+    res_handler.success(res, "سرویس با موفقیت ایجاد شد", result)
     await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1 } })
 
 })
@@ -313,7 +313,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         const result = await all_servers.edit_service_name({
             name, service_id_on_server, server_id
         })
-        if (result) return res_handler.succsess(res, "سرویس با موفقیت ویرایش شد", result)
+        if (result) return res_handler.success(res, "سرویس با موفقیت ویرایش شد", result)
     } else {
         const server_cur_status = await all_servers.get_service_data({ server_id, service_id_on_server })
         const { expiryTime, total, protocol } = server_cur_status
@@ -327,7 +327,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         await Service.findOneAndUpdate({ server_id }, { $set: { service_id_on_server: id, server_id: new_server_id } })
         await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: 1 } })
         await Server.findOneAndUpdate({ server_id: new_server_id }, { $inc: { capacity: -1 } })
-        return res_handler.succsess(res, "سرویس با موفقیت ویرایش شد", result)
+        return res_handler.success(res, "سرویس با موفقیت ویرایش شد", result)
 
     }
 
@@ -347,7 +347,7 @@ router.post("/disable_enable_service", midels.check_admin, async (req, res) => {
     if (!selected_service) return res_handler.faild("INVALID_SERVICE")
     const { service_id_on_server, server_id } = selected_service
     const result = await all_servers.disable_enable_service({ server_id, service_id_on_server, op })
-    res_handler.succsess(res, "تغییرات با موفقیت انجام شد", result)
+    res_handler.success(res, "تغییرات با موفقیت انجام شد", result)
     await Service.findOneAndUpdate({ server_id }, { $set: { active: op } })
 
 
@@ -368,7 +368,7 @@ router.post("/change_link", midels.check_admin, async (req, res) => {
 
     const { server_id, service_id_on_server } = selected_service
     const result = await all_servers.change_link({ server_id, service_id_on_server })
-    res_handler.succsess(res, "تغییرات با موفقیت انجام شد", result)
+    res_handler.success(res, "تغییرات با موفقیت انجام شد", result)
 
 
 
@@ -389,8 +389,8 @@ router.post("/reset_service", midels.check_admin, async (req, res) => {
     const { duration } = selected_plan
     const new_ex_date = duration == 0 ? 0 : Date.now() + (duration * 1000 * 60 * 60 * 24)
     const result = await all_servers.reset_service({ server_id, service_id_on_server, new_ex_date })
-    res_handler.succsess(res, "سرویس تمدید شد", result)
-    await Service.findOneAndUpdate({ server_id }, { $set: { active: true } })
+    res_handler.success(res, "سرویس تمدید شد", result)
+    await Service.findOneAndUpdate({ server_id }, { $set: { active: true, end_date: new_ex_date } })
 
 
 })

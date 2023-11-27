@@ -49,13 +49,24 @@ router.get("/link/:service_id", midels.check_client, async (req, res) => {
         link = "vmess://" + btoa(JSON.stringify(base_data))
         qrcode = await helper.generate_qr_code(link)
     }
-    res_handler.succsess(res,"", { link, qrcode })
+    res_handler.success(res, "", { link, qrcode })
 
 })
 
 
+router.get("/servers", async (req, res) => {
+    const servers = await Server.find({}, { password: 0 })
+    res_handler.success(res, "", { servers })
+})
 
+router.get("/services", midels.check_client, async (req, res) => {
+    const { user } = req.body
+    const { user_id, access } = user
+    const query = access == 1 ? {} : { creator_id: user_id }
 
+    const user_services = await Service.find(query)
+        
+})
 
 
 

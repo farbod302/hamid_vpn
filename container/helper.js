@@ -1,4 +1,6 @@
 const QRCode = require('qrcode')
+var encryptor = require('simple-encryptor')(process.env.ENCRYPTOR);
+
 const helper = {
     check_inputs(require_inputs, body) {
         if (!body) return false
@@ -14,6 +16,13 @@ const helper = {
                 resolve(url)
             })
         })
+    },
+
+    encrypt(text) {
+        return encryptor.encrypt(text)
+    },
+    decrypt(hash) {
+        return encryptor.decrypt(hash)
     }
 }
 

@@ -16,7 +16,7 @@ const res_handler = {
         "UNKNOWN_ERROR":"خطای ناشناخته"
     },
 
-    succsess(res, msg, data) {
+    success(res, msg, data) {
         res.json({
             status: true,
             msg,

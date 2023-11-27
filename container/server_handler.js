@@ -2,12 +2,13 @@ const { default: axios } = require("axios")
 axios.defaults.withCredentials = true
 const crypto = require("crypto")
 const { uid } = require("uid")
+const helper = require("./helper")
 const Server = class {
     constructor(server) {
         const { url, user_name, password } = server
         this.url = url
         this.user_name = user_name
-        this.password = password
+        this.password = helper.decrypt(password)
     }
     async init_server() {
         const data = await axios.post(`${this.url}/login`, {
