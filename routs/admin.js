@@ -59,7 +59,7 @@ router.post("/add_credit", midels.check_admin, async (req, res) => {
     const { credit, user_id, user } = req.body
     const { user_id: creator } = user
     if (credit == 0) return res_handler.faild(res, "INVALID_VALUES")
-    await User.findOneAndUpdate({ user_id }, { $inc: { credit } })
+    await User.findOneAndUpdate({ user_id }, { $inc: { credit:+credit } })
     res_handler.succsess(res, "موجودی با موفقیت تغییر کرذ", {})
 
     const new_transaction = {
