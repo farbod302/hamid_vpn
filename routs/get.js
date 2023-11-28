@@ -16,8 +16,8 @@ router.get("/link/:service_id", midels.check_client, async (req, res) => {
     const { user_id, access } = user
     const { service_id } = req.params
     const selected_service = await Service.findOne({ service_id })
-    if (!selected_service) return res_handler.faild("INVALID_SERVICE")
-    if (!access && selected_service.creator_id !== user_id) return res_handler.faild(res, "ACCESS_DENY")
+    if (!selected_service) return res_handler.failed("INVALID_SERVICE")
+    if (!access && selected_service.creator_id !== user_id) return res_handler.failed(res, "ACCESS_DENY")
     const { server_id, service_id_on_server } = selected_service
     const service_data = await all_servers.get_service_data({ server_id, service_id_on_server })
     const selected_server = await Server.findOne({ server_id })

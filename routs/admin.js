@@ -27,11 +27,11 @@ router.post("/sign_new_client", midels.check_admin, async (req, res) => {
             "name"
         ], req.body || {}
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { user_name, password, access, phone, name } = req.body
-    if (!helper.check_phone(phone)) return res_handler.faild(res, "INVALID_PHONE")
+    if (!helper.check_phone(phone)) return res_handler.failed(res, "INVALID_PHONE")
     const is_exist = await User.findOne({ $or: [{ user_name }, { phone }] })
-    if (is_exist) return res_handler.faild(res, "DUPLICATE")
+    if (is_exist) return res_handler.failed(res, "DUPLICATE")
     const user_id = uid(6)
     const new_client = {
         user_id,
@@ -53,14 +53,14 @@ router.post("/add_credit", midels.check_admin, async (req, res) => {
             "credit",
         ], req.body
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
 
 
     const { credit, user_id, user } = req.body
     const { user_id: creator } = user
-    if (credit == 0) return res_handler.faild(res, "INVALID_VALUES")
+    if (credit == 0) return res_handler.failed(res, "INVALID_VALUES")
     await User.findOneAndUpdate({ user_id }, { $inc: { credit: +credit } })
-    res_handler.success(res, "موجودی با موفقیت تغییر کرذ", {})
+    res_handler.success(res, "موجودی با موفقیت تغییر کرد", {})
 
     const new_transaction = {
         credit, creator, user_id, note: +credit > 0 ? "واریز" : "براشت", date: Date.now(), transaction_id: uid(8)
@@ -84,7 +84,7 @@ router.post("/block_client", midels.check_admin, async (req, res) => {
             "active"
         ], req.body
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { active, user_id } = req.body
     await User.findOneAndUpdate({ user_id }, { $set: { active } })
     res_handler.success(res, "وضعیت کاربر با موفقیت تغییر کرد", {})
@@ -103,7 +103,7 @@ router.post("/add_plan", midels.check_admin, async (req, res) => {
             "volume",
         ], req.body || {}
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { dis, price, duration, volume } = req.body
     const new_plan = {
         plan_id: uid(5),
@@ -133,7 +133,7 @@ router.post("/edit_plan", midels.check_admin, async (req, res) => {
             "plan_id"
         ], req.body || {}
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { dis, price, duration, volume, plan_id } = req.body
     const new_plan = {
         plan_id,
@@ -157,7 +157,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
             "capacity",
         ], req.body || {}
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const {
         url,
         user_name,
@@ -200,7 +200,7 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
             "server_id"
         ], req.body || {}
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const {
         url,
         user_name,
@@ -234,7 +234,7 @@ router.post("/send_notification", midels.check_admin, async (req, res) => {
             "note"
         ], req.body || {}
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { note } = req.body
     const new_notification = {
         rasivers: ["all"],
@@ -257,10 +257,10 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
             "name",
         ], req.body || {}
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { server_id, plan_id, protocol, name, user } = req.body
     const selected_plan = await Plan.findOne({ plan_id, active: true })
-    if (!selected_plan) return res_handler.faild(res, "INVALID_PLAN")
+    if (!selected_plan) return res_handler.failed(res, "INVALID_PLAN")
     const { volume, duration } = selected_plan
 
     const new_service = {
@@ -302,12 +302,12 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
             "name",
         ], req.body || {}
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
 
     const { service_id, name, server_id: new_server_id } = req.body
 
     const selected_service = await Service.findOne({ service_id })
-    if (!selected_service) return res_handler.faild("INVALID_SERVICE")
+    if (!selected_service) return res_handler.failed("INVALID_SERVICE")
     const { server_id, service_id_on_server } = selected_service
     if (server_id === new_server_id) {
         const result = await all_servers.edit_service_name({
@@ -322,7 +322,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         const result = await all_servers.create_service({
             server_id: new_server_id, flow: total / (1024 ** 3), expire_date: expiryTime, name, protocol
         })
-        if (!result) return res_handler.faild("UNKNOWN_ERROR")
+        if (!result) return res_handler.failed("UNKNOWN_ERROR")
         const { id } = result
         await Service.findOneAndUpdate({ server_id }, { $set: { service_id_on_server: id, server_id: new_server_id } })
         await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: 1 } })
@@ -341,10 +341,10 @@ router.post("/disable_enable_service", midels.check_admin, async (req, res) => {
             "op"
         ], req.body || {}
     )
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { op, service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
-    if (!selected_service) return res_handler.faild("INVALID_SERVICE")
+    if (!selected_service) return res_handler.failed("INVALID_SERVICE")
     const { service_id_on_server, server_id } = selected_service
     const result = await all_servers.disable_enable_service({ server_id, service_id_on_server, op })
     res_handler.success(res, "تغییرات با موفقیت انجام شد", result)
@@ -362,7 +362,7 @@ router.post("/change_link", midels.check_admin, async (req, res) => {
         ], req.body || {}
     )
 
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
 
@@ -381,7 +381,7 @@ router.post("/reset_service", midels.check_admin, async (req, res) => {
         ], req.body || {}
     )
 
-    if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
     const { server_id, service_id_on_server, plan_id } = selected_service

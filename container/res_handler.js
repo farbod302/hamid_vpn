@@ -13,7 +13,8 @@ const res_handler = {
         "BLOCKED_USER":"حساب کاربری شما مسدود شده",
         "INVALID_VALUES":"مقادیر وارد شده نامعتبر است",
         "INVALID_SERVICE":"سرویس مورد نظر یافت نشد",
-        "UNKNOWN_ERROR":"خطای ناشناخته"
+        "UNKNOWN_ERROR":"خطای ناشناخته",
+        "NOT_ENOUGH_CREDIT":"موجودی حساب شما برای انجام این عملایت کافی نیست"
     },
 
     success(res, msg, data) {
@@ -24,7 +25,7 @@ const res_handler = {
         })
     },
 
-    faild(res, code) {
+    failed(res, code) {
         res.json({
             status: false,
             msg: this.error_codes[code],
