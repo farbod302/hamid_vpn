@@ -10,7 +10,8 @@ const user = mongoose.Schema({
     access: Number,
     credit: { type: Number, default: 0 },
     active: { type: Boolean, default: true },
-    creator: String
+    creator: String,
+    last_notification_seen: { type: Number, default: 0 }
 })
 
 

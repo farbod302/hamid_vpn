@@ -4,7 +4,9 @@ const Service = require("../db/service")
 const res_handler = require("../container/res_handler")
 const all_servers = require("../container/all_servers")
 const Server = require("../db/server")
+const User = require("../db/users")
 const helper = require("../container/helper")
+const Notification = require("../db/notification")
 const router = express.Router()
 
 
@@ -64,14 +66,25 @@ router.get("/services", midels.check_client, async (req, res) => {
     const { user_id, access } = user
     const query = access == 1 ? {} : { creator_id: user_id }
 
-    const user_services = await Service.aggregate([{ $match: query }, {
+    const user_services = await Service.aggregate([{ $match: query },
+    {
         $lookup: {
             from: "servers",
             localField: "server_id",
             foreignField: "server_id",
             as: "server"
         }
-    }])
+    },
+    {
+        $lookup: {
+            from: "users",
+            localField: "creator_id",
+            foreignField: "user_id",
+            as: "user"
+        }
+    },
+
+    ])
     const services_status = user_services.map(async service => {
         const { server_id, service_id_on_server } = service
         const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server })
@@ -87,21 +100,67 @@ router.get("/services", midels.check_client, async (req, res) => {
 
 
     const clean_data = compleat_data.map(service => {
-        const { name, server_side_data, server } = service
-        const { up, down, expiryTime: expiry_time, enable, port, settings } = server_side_data
-        const { totalGB } = settings.clients[0]
-        return {
-            name, server: server[0].dis, total_used: up + down, expiry_time, active: enable, port, total_volume: totalGB/(1024**3)
+        try {
+            const { name, server_side_data, server, user } = service
+            const { up, down, expiryTime: expiry_time, enable, port, settings } = server_side_data
+            const { totalGB } = settings?.clients[0]
+            
+            return {
+                name,
+                server: server[0].dis,
+                total_used: ((up + down) / (1024 ** 2)).toFixed(2)+"MB",
+                expiry_time,
+                active: enable,
+                port,
+                total_volume: totalGB / (1024 ** 3)+"GB",
+                creator: user[0].name
+            }
+        }
+        catch {
+            return null
         }
 
 
     })
 
-    res_handler.success(res, "", clean_data)
+
+    res_handler.success(res, "", clean_data.filter(e => e))
 
 
 })
 
 
+router.get("/clients", midels.check_admin, async (req, res) => {
+    const clients = await User.find({}, { password: 0 })
+    res_handler.success(res, "", clients)
+})
+
+
+router.get("/notifications", midels.check_client, async (req, res) => {
+    const { user } = req.body
+    const { user_id } = user
+    const user_from_db = await User.findOne({ user_id })
+    const { last_notification_seen } = user_from_db
+    const user_notifications = await Notification.aggregate([
+        {
+            $match: { $or: [{ rasivers: "all" }, { rasivers: user_id }] }
+        },
+        {
+            $project: {
+                date: "$date",
+                note: "$note",
+                seen: {
+                    $cond: { if: { $gt: ["$date", last_notification_seen] }, then: false, else: true }
+                }
+            }
+        },
+
+    ])
+    res_handler.success(res, "", user_notifications)
+
+    await User.findOneAndUpdate({ user_id }, { $set: { last_notification_seen: Date.now() } })
+})
+
 
 module.exports = router
+

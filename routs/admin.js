@@ -67,7 +67,7 @@ router.post("/add_credit", midels.check_admin, async (req, res) => {
     }
     new Transaction(new_transaction).save()
     const new_notification = {
-        resivers: [user_id],
+        rasivers: [user_id],
         date: Date.now(),
         notification_id: uid(5),
         note: `اعتبار حساب شما به میازان ${credit} ${+credit > 0 ? "افزایش" : "کاهش"} یافت`
@@ -112,7 +112,7 @@ router.post("/add_plan", midels.check_admin, async (req, res) => {
     new Plan(new_plan).save()
 
     const new_notification = {
-        resivers: ["all"],
+        rasivers: ["all"],
         date: Date.now(),
         notification_id: uid(5),
         note: `پلن جدید :${dis} به پلن های فروش اضافه شد !`
@@ -176,7 +176,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
     new Server(new_server).save()
     res_handler.success(res, "سرور جدید اضافه شد", {})
     const new_notification = {
-        resivers: ["all"],
+        rasivers: ["all"],
         date: Date.now(),
         notification_id: uid(5),
         note: `سرور جدید :${dis} به سرور ها اضافه شد !`
@@ -237,7 +237,7 @@ router.post("/send_notification", midels.check_admin, async (req, res) => {
     if (!valid_inputs) return res_handler.faild(res, "INVALID_INPUTS")
     const { note } = req.body
     const new_notification = {
-        resivers: ["all"],
+        rasivers: ["all"],
         date: Date.now(),
         notification_id: uid(5),
         note: `‍پیام ادمین: ${note}`
