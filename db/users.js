@@ -11,7 +11,7 @@ const user = mongoose.Schema({
     credit: { type: Number, default: 0 },
     active: { type: Boolean, default: true },
     creator: String,
-    last_notification_seenn: { type: Number, default: 0 }
+    last_notification_seen: { type: Number, default: 0 }
 })
 
 
