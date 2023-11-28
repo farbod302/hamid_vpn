@@ -15,7 +15,6 @@ mongoose.connect(process.env.DB)
 const port = process.env.PORT
 
 const routs = require("./container/routs")
-const Server = require('./container/server_handler')
 const all_servers = require('./container/all_servers')
 const keys = Object.keys(routs)
 keys.forEach(key => app.use(key, routs[key]))
