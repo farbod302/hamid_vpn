@@ -116,6 +116,8 @@ const Server = class {
             }
         })
 
+        console.log({clean_body});
+
         const data = await this.post_request("panel/api/inbounds/add", clean_body)
         return data[0]
 
