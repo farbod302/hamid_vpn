@@ -97,7 +97,7 @@ const all_servers = {
 
         const service = await this.get_service_data({ server_id, service_id_on_server })
         const { settings } = service
-        const client = settings.clients
+        const client = settings.clients[0]
 
         const result = await server_class.edit_link({ service_id_on_server, client })
         return result
