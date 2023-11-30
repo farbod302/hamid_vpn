@@ -28,19 +28,20 @@ const Server = class {
             })
             const { obj } = data
             const is_array = obj.length
-            const clean_data = is_array ? obj : [obj].map(e => {
+            const clean_data = (is_array ? obj : [obj]).map(e => {
                 const keys = Object.keys(e)
                 const clean_d = {}
                 keys.forEach(k => {
                     try {
                         clean_d[k] = JSON.parse(e[k])
-                    } catch {
+                    } catch(err){
                         clean_d[k] = e[k]
                     }
                 })
                 return clean_d
             })
             return clean_data
+
 
         }
 
@@ -51,7 +52,7 @@ const Server = class {
                 }
             })
             data = data.data
-            if(!data.obj)return {data:data.success}
+            if (!data.obj) return { data: data.success }
             const { obj } = data
             const is_array = obj.length
 
@@ -76,16 +77,31 @@ const Server = class {
 
     }
 
+    find_port(used) {
+        let port = 0
+        const generator = () => {
+            let rand = Math.floor(Math.random() * (49999 - 10000) + 10000)
+            if (used.includes(rand)) generator()
+            else {
+                port=rand
+                return port
+            }
+        }
+        return generator()
+    }
+
     async create_service({ expire_date, flow, name, protocol }) {
 
+        const cur_services = await this.get_all_services()
+        const used_ports = cur_services.map(e => e.port)
         const body = { ...create_server_default }
         body.total = 0
         body.protocol = protocol
         body.expiryTime = expire_date
         body.settings.clients[0].id = crypto.randomUUID()
         body.settings.clients[0].email = uid(9)
-        body.settings.clients[0].totalGB =flow * (1024 ** 3)
-        body.port = Math.floor(Math.random() * (49999 - 10000) + 10000)
+        body.settings.clients[0].totalGB = flow * (1024 ** 3)
+        body.port = this.find_port(used_ports)
         body.remark = name
         const clean_body = {}
         const keys = Object.keys(body)
@@ -140,7 +156,7 @@ const Server = class {
         const new_id = crypto.randomUUID()
         const new_client = { ...client }
         new_client.id = new_id
-        const clients_to_send = {clients:[{...new_client}]}
+        const clients_to_send = { clients: [{ ...new_client }] }
         const result = await this.post_request("panel/api/inbounds/updateClient/" + cur_id, this.clean_to_send(
             {
                 id: service_id_on_server,
@@ -151,8 +167,8 @@ const Server = class {
 
     }
 
-    async reset_service({ service_id_on_server,new_ex_date }) { 
-        await this.post_request("panel/api/inbounds/resetAllClientTraffics/"+service_id_on_server)
+    async reset_service({ service_id_on_server, new_ex_date }) {
+        await this.post_request("panel/api/inbounds/resetAllClientTraffics/" + service_id_on_server)
         const cur_status = await this.get_service({ service_id: service_id_on_server })
         if (!cur_status) return false
         const new_body = { ...cur_status }
@@ -169,9 +185,12 @@ const Server = class {
         return data[0]
     }
 
-    async get_service_qr_code({ service_id }) { }
 
-    async get_all_services() { }
+    async get_all_services() {
+        const data = await this.get_request("panel/api/inbounds/list")
+        // console.log({data});
+        return data
+    }
 
     async disable_enable_service({ service_id_on_server, op }) {
         const cur_status = await this.get_service({ service_id: service_id_on_server })

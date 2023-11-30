@@ -69,6 +69,14 @@ const all_servers = {
         return result
     },
 
+    async get_all_services({server_id}){
+        const selected_server = this.servers.find(e => e.server_id === server_id)
+        if (!selected_server) return false
+        const { server_class } = selected_server
+        const result = await server_class.get_all_services()
+        return result
+    },
+
 
     async disable_enable_service({ server_id, service_id_on_server, op }) {
         const selected_server = this.servers.find(e => e.server_id === server_id)

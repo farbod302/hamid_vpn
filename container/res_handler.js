@@ -14,7 +14,9 @@ const res_handler = {
         "INVALID_VALUES":"مقادیر وارد شده نامعتبر است",
         "INVALID_SERVICE":"سرویس مورد نظر یافت نشد",
         "UNKNOWN_ERROR":"خطای ناشناخته",
-        "NOT_ENOUGH_CREDIT":"موجودی حساب شما برای انجام این عملایت کافی نیست"
+        "NOT_ENOUGH_CREDIT":"موجودی حساب شما برای انجام این عملایت کافی نیست",
+        "INVALID_SERVER":"مشخصات سرور اشتباه است",
+        "INVALID_LINK":"لینک وارد شده نامعتبر است"
     },
 
     success(res, msg, data) {

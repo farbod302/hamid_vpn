@@ -88,7 +88,7 @@ router.get("/services", midels.check_client, async (req, res) => {
     const services_status = user_services.map(async service => {
         const { server_id, service_id_on_server } = service
         const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server })
-
+        console.log({server_side_data:server_side_data.settings.clients});
 
         return {
             ...service,
@@ -160,6 +160,9 @@ router.get("/notifications", midels.check_client, async (req, res) => {
 
     await User.findOneAndUpdate({ user_id }, { $set: { last_notification_seen: Date.now() } })
 })
+
+
+
 
 
 module.exports = router

@@ -13,7 +13,7 @@ const { uid } = require("uid")
 const midels = require("../container/midel")
 const all_servers = require("../container/all_servers")
 
-
+const server_class = require("../container/server_handler")
 
 //post requests
 
@@ -165,24 +165,31 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
         dis,
         capacity
     } = req.body
-    const new_server = {
-        url,
-        user_name,
-        password: helper.encrypt(password),
-        dis,
-        capacity,
-        server_id: uid(5)
+
+    const new_server_class = new server_class({ url, user_name, password })
+    try {
+        await new_server_class.init_server()
+        const new_server = {
+            url,
+            user_name,
+            password: helper.encrypt(password),
+            dis,
+            capacity,
+            server_id: uid(5)
+        }
+        new Server(new_server).save()
+        res_handler.success(res, "سرور جدید اضافه شد", {})
+        const new_notification = {
+            rasivers: ["all"],
+            date: Date.now(),
+            notification_id: uid(5),
+            note: `سرور جدید :${dis} به سرور ها اضافه شد !`
+        }
+        new Notification(new_notification).save()
+        all_servers.init_all_servers()
+    } catch {
+        res_handler.failed(res, "INVALID_SERVER")
     }
-    new Server(new_server).save()
-    res_handler.success(res, "سرور جدید اضافه شد", {})
-    const new_notification = {
-        rasivers: ["all"],
-        date: Date.now(),
-        notification_id: uid(5),
-        note: `سرور جدید :${dis} به سرور ها اضافه شد !`
-    }
-    new Notification(new_notification).save()
-    all_servers.init_all_servers()
 
 
 })
@@ -209,21 +216,29 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
         capacity,
         server_id
     } = req.body
-    const cur_status = await Server.findOne({ server_id })
-    const { capacity_used } = cur_status
-    const new_server = {
-        url,
-        user_name,
-        password: helper.encrypt(password),
-        dis,
-        capacity,
-        server_id,
-        capacity_used
+    const new_server_class = new server_class({ url, user_name, password })
+
+    try {
+        await new_server_class.init_server()
+        const cur_status = await Server.findOne({ server_id })
+        const { capacity_used } = cur_status
+        const new_server = {
+            url,
+            user_name,
+            password: helper.encrypt(password),
+            dis,
+            capacity,
+            server_id,
+            capacity_used
+        }
+
+        await Server.findOneAndReplace({ server_id }, new_server)
+        res_handler.success(res, "سرور ویرایش شد", {})
+        all_servers.init_all_servers()
+    } catch {
+        res_handler.failed(res, "INVALID_SERVER")
     }
 
-    await Server.findOneAndReplace({ server_id }, new_server)
-    res_handler.success(res, "سرور ویرایش شد", {})
-    all_servers.init_all_servers()
 
 })
 
@@ -316,11 +331,11 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         if (result) return res_handler.success(res, "سرویس با موفقیت ویرایش شد", result)
     } else {
         const server_cur_status = await all_servers.get_service_data({ server_id, service_id_on_server })
-        const { expiryTime, total, protocol } = server_cur_status
+        const { expiryTime, protocol, up, down } = server_cur_status
         // todo :calc data used before
         await all_servers.delete_service({ server_id, service_id_on_server })
         const result = await all_servers.create_service({
-            server_id: new_server_id, flow: total / (1024 ** 3), expire_date: expiryTime, name, protocol
+            server_id: new_server_id, flow: selected_service.volume === 0 ? 0 : (selected_service.volume * (1024 ** 3) - (up + down)), expire_date: expiryTime, name, protocol
         })
         if (!result) return res_handler.failed("UNKNOWN_ERROR")
         const { id } = result
@@ -384,6 +399,7 @@ router.post("/reset_service", midels.check_admin, async (req, res) => {
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
+    if(!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
     const { server_id, service_id_on_server, plan_id } = selected_service
     const selected_plan = await Plan.findOne({ plan_id })
     const { duration } = selected_plan
