@@ -52,6 +52,7 @@ const Server = class {
                     "Cookie": cookie
                 }
             })
+            console.log({data});
             data = data.data
             if (!data.obj) return { data: data.success }
             const { obj } = data
