@@ -26,7 +26,6 @@ const Server = class {
                     "Cookie": cookie
                 }
             })
-            console.log({data});
             const { obj } = data
             if(!obj)return data
             const is_array = obj.length

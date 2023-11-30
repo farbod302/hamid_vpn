@@ -5,6 +5,7 @@ const res_handler = require("../container/res_handler")
 const all_servers = require("../container/all_servers")
 const Server = require("../db/server")
 const User = require("../db/users")
+const Plan = require("../db/plan")
 const helper = require("../container/helper")
 const Notification = require("../db/notification")
 const router = express.Router()
@@ -60,6 +61,11 @@ router.get("/servers", async (req, res) => {
     const servers = await Server.find({}, { password: 0 })
     res_handler.success(res, "", { servers })
 })
+router.get("/plans", async (req, res) => {
+    const plans = await Plan.find()
+    res_handler.success(res, "", { plans })
+})
+
 
 router.get("/services", midels.check_client, async (req, res) => {
     const { user } = req.body
