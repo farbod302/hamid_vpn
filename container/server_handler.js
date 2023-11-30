@@ -26,7 +26,9 @@ const Server = class {
                     "Cookie": cookie
                 }
             })
+            console.log({data});
             const { obj } = data
+            if(!obj)return data
             const is_array = obj.length
             const clean_data = (is_array ? obj : [obj]).map(e => {
                 const keys = Object.keys(e)
