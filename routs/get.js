@@ -117,7 +117,7 @@ router.get("/services", midels.check_client, async (req, res) => {
 
     const clean_data = compleat_data.map(service => {
         try {
-            const { name, server_side_data, server, user } = service
+            const { name, server_side_data, server, user,service_id } = service
             const { up, down, expiryTime: expiry_time, enable, port, settings } = server_side_data
             const { totalGB } = settings?.clients[0]
             
@@ -129,7 +129,8 @@ router.get("/services", midels.check_client, async (req, res) => {
                 active: enable,
                 port,
                 total_volume: totalGB / (1024 ** 3)+"GB",
-                creator: user[0].name
+                creator: user[0].name,
+                service_id
             }
         }
         catch {
