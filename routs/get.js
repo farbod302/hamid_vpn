@@ -67,6 +67,16 @@ router.get("/plans", async (req, res) => {
 })
 
 
+
+router.get("/add_service_dropdown",async (req,res)=>{
+    const servers = await Server.find({}, { password: 0 })
+    const plans = await Plan.find()
+    res_handler.success(res, "", { plans,servers})
+    
+
+
+})
+
 router.get("/services", midels.check_client, async (req, res) => {
     const { user } = req.body
     const { user_id, access } = user
