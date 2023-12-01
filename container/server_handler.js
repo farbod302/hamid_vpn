@@ -3,12 +3,14 @@ axios.defaults.withCredentials = true
 const crypto = require("crypto")
 const { uid } = require("uid")
 const helper = require("./helper")
+const Service = require("../db/service")
 const Server = class {
     constructor(server) {
-        const { url, user_name, password } = server
+        const { url, user_name, password, server_id } = server
         this.url = url
         this.user_name = user_name
         this.password = helper.decrypt(password)
+        this.server_id = server_id
     }
     async init_server() {
         const data = await axios.post(`${this.url}/login`, {
@@ -27,7 +29,7 @@ const Server = class {
                 }
             })
             const { obj } = data
-            if(!obj)return data
+            if (!obj) return data
             const is_array = obj.length
             const clean_data = (is_array ? obj : [obj]).map(e => {
                 const keys = Object.keys(e)
@@ -35,7 +37,7 @@ const Server = class {
                 keys.forEach(k => {
                     try {
                         clean_d[k] = JSON.parse(e[k])
-                    } catch(err){
+                    } catch (err) {
                         clean_d[k] = e[k]
                     }
                 })
@@ -84,7 +86,7 @@ const Server = class {
             let rand = Math.floor(Math.random() * (49999 - 10000) + 10000)
             if (used.includes(rand)) generator()
             else {
-                port=rand
+                port = rand
                 return port
             }
         }
@@ -184,13 +186,16 @@ const Server = class {
 
     async get_service({ service_id }) {
         const data = await this.get_request("panel/api/inbounds/get/" + service_id)
+        if (!data[0]) {
+            await Service.findOneAndUpdate({ server_id: this.server_id, service_id_on_server:service_id }, { $set: { active: false } })
+            return null
+        }
         return data[0]
     }
 
 
     async get_all_services() {
         const data = await this.get_request("panel/api/inbounds/list")
-        // console.log({data});
         return data
     }
 

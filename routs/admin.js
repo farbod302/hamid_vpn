@@ -236,7 +236,7 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
         res_handler.success(res, "سرور ویرایش شد", {})
         all_servers.init_all_servers()
     } catch {
-        res_handler.failed(res, "INVALID_SERVER")
+        res_handler.failed(res, "INVALID_SERVER_INFO")
     }
 
 
@@ -304,7 +304,7 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
 
     new Service(service_to_save).save()
     res_handler.success(res, "سرویس با موفقیت ایجاد شد", result)
-    await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1 } })
+    await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1, capacity_used: 1 } })
 
 })
 
@@ -318,7 +318,8 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
-
+    const new_server = await Server.findOne({ server_id, active: true })
+    if (!new_server) res_handler.failed(res, "INVALID_SERVER")
     const { service_id, name, server_id: new_server_id } = req.body
 
     const selected_service = await Service.findOne({ service_id })
@@ -399,7 +400,7 @@ router.post("/reset_service", midels.check_admin, async (req, res) => {
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
-    if(!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
+    if (!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
     const { server_id, service_id_on_server, plan_id } = selected_service
     const selected_plan = await Plan.findOne({ plan_id })
     const { duration } = selected_plan

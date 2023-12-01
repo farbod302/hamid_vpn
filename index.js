@@ -20,10 +20,11 @@ const keys = Object.keys(routs)
 keys.forEach(key => app.use(key, routs[key]))
 
 
+all_servers.init_all_servers().then(()=>{
+    server.listen(port, () => { console.log(`server run on port ${port}`); })
+})
 
-server.listen(port, () => { console.log(`server run on port ${port}`); })
 
 
 
-all_servers.init_all_servers()
 

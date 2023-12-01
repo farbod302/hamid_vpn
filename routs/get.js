@@ -68,11 +68,11 @@ router.get("/plans", async (req, res) => {
 
 
 
-router.get("/add_service_dropdown",async (req,res)=>{
+router.get("/add_service_dropdown", async (req, res) => {
     const servers = await Server.find({}, { password: 0 })
     const plans = await Plan.find()
-    res_handler.success(res, "", { plans,servers})
-    
+    res_handler.success(res, "", { plans, servers })
+
 
 
 })
@@ -80,7 +80,7 @@ router.get("/add_service_dropdown",async (req,res)=>{
 router.get("/services", midels.check_client, async (req, res) => {
     const { user } = req.body
     const { user_id, access } = user
-    const query = access == 1 ? {} : { creator_id: user_id }
+    const query = access == 1 ? { active: true } : { creator_id: user_id, active: true }
 
     const user_services = await Service.aggregate([{ $match: query },
     {
@@ -104,31 +104,30 @@ router.get("/services", midels.check_client, async (req, res) => {
     const services_status = user_services.map(async service => {
         const { server_id, service_id_on_server } = service
         const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server })
-        console.log({server_side_data:server_side_data.settings.clients});
-
+        if(!server_side_data)return null
         return {
             ...service,
             server_side_data,
         }
     })
 
-    const compleat_data = await Promise.all(services_status)
-
+    let compleat_data = await Promise.all(services_status)
+    compleat_data=compleat_data.filter(e=>e)
 
     const clean_data = compleat_data.map(service => {
         try {
-            const { name, server_side_data, server, user,service_id } = service
+            const { name, server_side_data, server, user, service_id } = service
             const { up, down, expiryTime: expiry_time, enable, port, settings } = server_side_data
             const { totalGB } = settings?.clients[0]
-            
+
             return {
                 name,
                 server: server[0].dis,
-                total_used: ((up + down) / (1024 ** 2)).toFixed(2)+"MB",
+                total_used: ((up + down) / (1024 ** 2)).toFixed(2) + "MB",
                 expiry_time,
                 active: enable,
                 port,
-                total_volume: totalGB / (1024 ** 3)+"GB",
+                total_volume: totalGB / (1024 ** 3) + "GB",
                 creator: user[0].name,
                 service_id
             }
