@@ -144,6 +144,7 @@ const Server = class {
         const to_delete = ["id", "up", "down", "total", "clientStats"]
         to_delete.forEach(e => delete new_body[e])
         new_body["remark"] = name
+        console.log({new_name});
         const result = await this.post_request("panel/api/inbounds/update/" + service_id_on_server, this.clean_to_send(new_body))
         return result[0] || false
     }

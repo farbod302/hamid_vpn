@@ -338,7 +338,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         const result = await all_servers.create_service({
             server_id: new_server_id, flow: selected_service.volume === 0 ? 0 : (selected_service.volume * (1024 ** 3) - (up + down)), expire_date: expiryTime, name, protocol
         })
-        if (!result) return res_handler.failed("UNKNOWN_ERROR")
+        if (!result) return res_handler.failed(res,"UNKNOWN_ERROR")
         const { id } = result
         await Service.findOneAndUpdate({ server_id }, { $set: { service_id_on_server: id, server_id: new_server_id } })
         await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: 1 } })
