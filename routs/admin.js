@@ -318,9 +318,9 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
+    const { service_id, name, server_id: new_server_id } = req.body
     const new_server = await Server.findOne({ server_id, active: true })
     if (!new_server) res_handler.failed(res, "INVALID_SERVER")
-    const { service_id, name, server_id: new_server_id } = req.body
 
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed("INVALID_SERVICE")
