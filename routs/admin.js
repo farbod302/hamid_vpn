@@ -166,7 +166,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
         capacity
     } = req.body
 
-    const new_server_class = new server_class({ url, user_name, password })
+    const new_server_class = new server_class({ url, user_name, password:helper.encrypt(password) })
     try {
         await new_server_class.init_server()
         const new_server = {
@@ -216,7 +216,7 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
         capacity,
         server_id
     } = req.body
-    const new_server_class = new server_class({ url, user_name, password })
+    const new_server_class = new server_class({ url, user_name, password:helper.encrypt(password) })
 
     try {
         await new_server_class.init_server()
