@@ -187,7 +187,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
         }
         new Notification(new_notification).save()
         all_servers.init_all_servers()
-    } catch {
+    } catch(err) {
         res_handler.failed(res, "INVALID_SERVER")
     }
 
@@ -235,7 +235,8 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
         await Server.findOneAndReplace({ server_id }, new_server)
         res_handler.success(res, "سرور ویرایش شد", {})
         all_servers.init_all_servers()
-    } catch {
+    } catch (err){
+        console.log(err);
         res_handler.failed(res, "INVALID_SERVER_INFO")
     }
 
