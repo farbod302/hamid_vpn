@@ -319,7 +319,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { service_id, name, server_id: new_server_id } = req.body
-    const new_server = await Server.findOne({ server_id:new_server_id, active: true })
+    const new_server = await Server.findOne({ server_id: new_server_id, active: true })
     if (!new_server) res_handler.failed(res, "INVALID_SERVER")
 
     const selected_service = await Service.findOne({ service_id })
@@ -329,7 +329,10 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         const result = await all_servers.edit_service_name({
             name, service_id_on_server, server_id
         })
-        if (result) return res_handler.success(res, "سرویس با موفقیت ویرایش شد", result)
+        if (result) {
+            await Service.findOneAndUpdate({ service_id }, { $set: { name } })
+            return res_handler.success(res, "سرویس با موفقیت ویرایش شد", result)
+        }
     } else {
         const server_cur_status = await all_servers.get_service_data({ server_id, service_id_on_server })
         const { expiryTime, protocol, up, down } = server_cur_status
@@ -338,7 +341,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         const result = await all_servers.create_service({
             server_id: new_server_id, flow: selected_service.volume === 0 ? 0 : (selected_service.volume * (1024 ** 3) - (up + down)), expire_date: expiryTime, name, protocol
         })
-        if (!result) return res_handler.failed(res,"UNKNOWN_ERROR")
+        if (!result) return res_handler.failed(res, "UNKNOWN_ERROR")
         const { id } = result
         await Service.findOneAndUpdate({ server_id }, { $set: { service_id_on_server: id, server_id: new_server_id } })
         await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: 1 } })
