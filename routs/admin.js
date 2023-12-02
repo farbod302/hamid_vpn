@@ -353,6 +353,23 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
 
 })
 
+router.post("/disable_enable_server", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "server_id",
+            "op"
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
+    const { op, server_id } = req.body
+    await Server.findOneAndUpdate({server_id},{$set:{active:op}})
+    return res_handler.success(res, "سرور با موفقیت ویرایش شد", result)
+
+
+
+})
+
+
 router.post("/disable_enable_service", midels.check_admin, async (req, res) => {
     const valid_inputs = helper.check_inputs(
         [
