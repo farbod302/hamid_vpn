@@ -363,7 +363,7 @@ router.post("/disable_enable_server", midels.check_admin, async (req, res) => {
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { op, server_id } = req.body
     await Server.findOneAndUpdate({server_id},{$set:{active:op}})
-    return res_handler.success(res, "سرور با موفقیت ویرایش شد", result)
+    return res_handler.success(res, "سرور با موفقیت ویرایش شد", {})
 
 
 
