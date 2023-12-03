@@ -70,7 +70,7 @@ router.get("/plans", async (req, res) => {
 
 router.get("/add_service_dropdown", async (req, res) => {
     const servers = await Server.find({active:true}, { password: 0 })
-    const plans = await Plan.find()
+    const plans = await Plan.find({active:true})
     res_handler.success(res, "", { plans, servers })
 })
 
@@ -98,9 +98,12 @@ router.get("/services", midels.check_client, async (req, res) => {
     },
 
     ])
+
+    console.log({user_services:user_services.length});
     const services_status = user_services.map(async service => {
         const { server_id, service_id_on_server } = service
         const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server })
+        console.log("hi");
         if(!server_side_data)return null
         return {
             ...service,

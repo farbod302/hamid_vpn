@@ -166,7 +166,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
         capacity
     } = req.body
 
-    const new_server_class = new server_class({ url, user_name, password:helper.encrypt(password) })
+    const new_server_class = new server_class({ url, user_name, password: helper.encrypt(password) })
     try {
         await new_server_class.init_server()
         const new_server = {
@@ -187,7 +187,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
         }
         new Notification(new_notification).save()
         all_servers.init_all_servers()
-    } catch(err) {
+    } catch (err) {
         res_handler.failed(res, "INVALID_SERVER")
     }
 
@@ -216,7 +216,7 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
         capacity,
         server_id
     } = req.body
-    const new_server_class = new server_class({ url, user_name, password:helper.encrypt(password) })
+    const new_server_class = new server_class({ url, user_name, password: helper.encrypt(password) })
 
     try {
         await new_server_class.init_server()
@@ -235,7 +235,7 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
         await Server.findOneAndReplace({ server_id }, new_server)
         res_handler.success(res, "سرور ویرایش شد", {})
         all_servers.init_all_servers()
-    } catch (err){
+    } catch (err) {
         console.log(err);
         res_handler.failed(res, "INVALID_SERVER_INFO")
     }
@@ -363,7 +363,7 @@ router.post("/disable_enable_server", midels.check_admin, async (req, res) => {
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { op, server_id } = req.body
-    await Server.findOneAndUpdate({server_id},{$set:{active:op}})
+    await Server.findOneAndUpdate({ server_id }, { $set: { active: op } })
     return res_handler.success(res, "سرور با موفقیت ویرایش شد", {})
 
 
@@ -385,10 +385,28 @@ router.post("/disable_enable_service", midels.check_admin, async (req, res) => {
     const { service_id_on_server, server_id } = selected_service
     const result = await all_servers.disable_enable_service({ server_id, service_id_on_server, op })
     res_handler.success(res, "تغییرات با موفقیت انجام شد", result)
-    await Service.findOneAndUpdate({ server_id }, { $set: { active: op } })
 
 
 })
+
+
+router.post("/disable_enable_plan", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "plan_id",
+            "op"
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
+    const { op, plan_id } = req.body
+    const selected_plan = await Plan.findOne({ plan_id })
+    if (!selected_plan) return res_handler.failed("INVALID_SERVICE")
+    await Plan.findOneAndUpdate({ plan_id }, { $set: { active: op } })
+    res_handler.success(res, "تغییرات با موفقیت انجام شد", {})
+
+
+})
+
 
 
 router.post("/change_link", midels.check_admin, async (req, res) => {
