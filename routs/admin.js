@@ -442,8 +442,8 @@ router.post("/change_link", midels.check_client, async (req, res) => {
     )
 
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
-    const selected_service = await Service.findOne({ service_id })
     const { server_id, service_id_on_server, creator_id } = selected_service
+    const selected_service = await Service.findOne({ service_id })
     const { service_id, user } = req.body
 
     const { access, user_id } = user
