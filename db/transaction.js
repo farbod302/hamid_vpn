@@ -7,7 +7,7 @@ const transaction = mongoose.Schema({
     credit: Number,
     date: Number,
     note: String,
-    creator: String
+    created_by_admin: Boolean
 })
 
 
