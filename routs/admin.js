@@ -14,6 +14,7 @@ const midels = require("../container/midel")
 const all_servers = require("../container/all_servers")
 
 const server_class = require("../container/server_handler")
+const Ticket = require("../db/ticket")
 
 //post requests
 
@@ -263,7 +264,8 @@ router.post("/send_notification", midels.check_admin, async (req, res) => {
 })
 
 
-router.post("/add_service", midels.check_admin, async (req, res) => {
+router.post("/add_service", midels.check_client, async (req, res) => {
+
 
     const valid_inputs = helper.check_inputs(
         [
@@ -275,8 +277,18 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { server_id, plan_id, protocol, name, user } = req.body
+
+    const { access, user_id } = user
+
     const selected_plan = await Plan.findOne({ plan_id, active: true })
     if (!selected_plan) return res_handler.failed(res, "INVALID_PLAN")
+    if (access === 0) {
+        const requested_client = await User.findOne({ user_id })
+        const { credit } = requested_client
+        const { price } = selected_plan
+        if (price > credit) return res_handler.failed(res, "NOT_ENOUGH_CREDIT")
+    }
+
     const { volume, duration } = selected_plan
 
     const new_service = {
@@ -305,6 +317,9 @@ router.post("/add_service", midels.check_admin, async (req, res) => {
 
     new Service(service_to_save).save()
     res_handler.success(res, "سرویس با موفقیت ایجاد شد", result)
+    if (access === 0) {
+        await User.findOneAndUpdate({ user_id }, { $inc: { credit: price * -1 } })
+    }
     await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1, capacity_used: 1 } })
 
 })
@@ -319,13 +334,20 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
-    const { service_id, name, server_id: new_server_id } = req.body
+    const { service_id, name, server_id: new_server_id, user } = req.body
     const new_server = await Server.findOne({ server_id: new_server_id, active: true })
     if (!new_server) res_handler.failed(res, "INVALID_SERVER")
 
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed("INVALID_SERVICE")
-    const { server_id, service_id_on_server } = selected_service
+    const { server_id, service_id_on_server, creator_id } = selected_service
+
+    const { access, user_id } = user
+
+    if (access === 0) {
+        if (user_id !== creator_id) return res_handler.failed(res, "ACCESS_DENY")
+    }
+
     if (server_id === new_server_id) {
         const result = await all_servers.edit_service_name({
             name, service_id_on_server, server_id
@@ -409,7 +431,9 @@ router.post("/disable_enable_plan", midels.check_admin, async (req, res) => {
 
 
 
-router.post("/change_link", midels.check_admin, async (req, res) => {
+router.post("/change_link", midels.check_client, async (req, res) => {
+
+
 
     const valid_inputs = helper.check_inputs(
         [
@@ -418,10 +442,15 @@ router.post("/change_link", midels.check_admin, async (req, res) => {
     )
 
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
-    const { service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
+    const { server_id, service_id_on_server, creator_id } = selected_service
+    const { service_id, user } = req.body
 
-    const { server_id, service_id_on_server } = selected_service
+    const { access, user_id } = user
+    if (access === 0) {
+        if (user_id !== creator_id) return res_handler.failed(res, "ACCESS_DENY")
+    }
+
     const result = await all_servers.change_link({ server_id, service_id_on_server })
     res_handler.success(res, "تغییرات با موفقیت انجام شد", result)
 
@@ -429,7 +458,7 @@ router.post("/change_link", midels.check_admin, async (req, res) => {
 
 })
 
-router.post("/reset_service", midels.check_admin, async (req, res) => {
+router.post("/reset_service", midels.check_client, async (req, res) => {
     const valid_inputs = helper.check_inputs(
         [
             "service_id",
@@ -437,15 +466,27 @@ router.post("/reset_service", midels.check_admin, async (req, res) => {
     )
 
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
-    const { service_id } = req.body
+    const { service_id, user } = req.body
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
     const { server_id, service_id_on_server, plan_id } = selected_service
     const selected_plan = await Plan.findOne({ plan_id })
+    const { price } = selected_plan
+    const { access, user_id } = user
+    if (access === 0) {
+        const selected_user = await User.findOne({ user_id })
+        const { credit } = selected_user
+        if (credit < price) return res_handler.failed(res, "NOT_ENOUGH_CREDIT")
+    }
+
+
     const { duration } = selected_plan
     const new_ex_date = duration == 0 ? 0 : Date.now() + (duration * 1000 * 60 * 60 * 24)
     const result = await all_servers.reset_service({ server_id, service_id_on_server, new_ex_date })
     res_handler.success(res, "سرویس تمدید شد", result)
+    if (access === 0) {
+        await User.findOneAndUpdate({ user_id }, { $inc: { credit: price * -1 } })
+    }
     await Service.findOneAndUpdate({ server_id }, { $set: { active: true, end_date: new_ex_date } })
 
 
@@ -454,7 +495,25 @@ router.post("/reset_service", midels.check_admin, async (req, res) => {
 
 
 
+router.post("/answer_ticket", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "ticket_id",
+            "message"
+        ], req.body || {}
+    )
 
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
+    const { ticket_id, message } = req.body
+    await Ticket.findOneAndUpdate(
+        { ticket_id },
+        {
+
+            $push: { messages: { sender: true, msg: message, date: Date.now() } },
+            $set: { status: true }
+        }
+    )
+})
 
 
 

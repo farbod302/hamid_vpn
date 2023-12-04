@@ -6,6 +6,7 @@ const all_servers = require("../container/all_servers")
 const Server = require("../db/server")
 const User = require("../db/users")
 const Plan = require("../db/plan")
+const Ticket = require("../db/ticket")
 const helper = require("../container/helper")
 const Notification = require("../db/notification")
 const router = express.Router()
@@ -69,8 +70,8 @@ router.get("/plans", async (req, res) => {
 
 
 router.get("/add_service_dropdown", async (req, res) => {
-    const servers = await Server.find({active:true}, { password: 0 })
-    const plans = await Plan.find({active:true})
+    const servers = await Server.find({ active: true }, { password: 0 })
+    const plans = await Plan.find({ active: true })
     res_handler.success(res, "", { plans, servers })
 })
 
@@ -99,12 +100,12 @@ router.get("/services", midels.check_client, async (req, res) => {
 
     ])
 
-    console.log({user_services:user_services.length});
+    console.log({ user_services: user_services.length });
     const services_status = user_services.map(async service => {
         const { server_id, service_id_on_server } = service
         const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server })
         console.log("hi");
-        if(!server_side_data)return null
+        if (!server_side_data) return null
         return {
             ...service,
             server_side_data,
@@ -112,7 +113,7 @@ router.get("/services", midels.check_client, async (req, res) => {
     })
 
     let compleat_data = await Promise.all(services_status)
-    compleat_data=compleat_data.filter(e=>e)
+    compleat_data = compleat_data.filter(e => e)
 
     const clean_data = compleat_data.map(service => {
         try {
@@ -177,6 +178,37 @@ router.get("/notifications", midels.check_client, async (req, res) => {
     await User.findOneAndUpdate({ user_id }, { $set: { last_notification_seen: Date.now() } })
 })
 
+
+router.get("/tickets", midels.check_client, async (req, res) => {
+
+    const { user } = req.body
+    const query = user.access === 1 ? {} : { creator_id: user.user_id }
+
+    const tickets = await Ticket.aggregate([
+        {
+            $match: query
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "creator_id",
+                foreignField: "user_id",
+                as: "creator"
+            }
+        }
+    ])
+
+
+    const clean_tickets=tickets.map(t=>{
+        return{
+            ...t,
+            creator:t.creator[0].name
+        }
+    })
+    res_handler.success(res, "", clean_tickets)
+
+
+})
 
 
 
