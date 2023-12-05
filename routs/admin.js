@@ -513,6 +513,8 @@ router.post("/answer_ticket", midels.check_admin, async (req, res) => {
             $set: { status: true }
         }
     )
+    res_handler.success(res, "پاسخ شما ثبت شد")
+
 })
 
 
