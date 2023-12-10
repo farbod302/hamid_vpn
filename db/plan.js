@@ -7,7 +7,8 @@ const plan = mongoose.Schema({
     price: String,
     volume: Number,
     duration: Number,
-    active: { type: Boolean, default: true }
+    active: { type: Boolean, default: true },
+    grpc: Boolean
 })
 
 

@@ -102,13 +102,14 @@ router.post("/add_plan", midels.check_admin, async (req, res) => {
             "price",
             "duration",
             "volume",
+            "grpc"
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
-    const { dis, price, duration, volume } = req.body
+    const { dis, price, duration, volume, grpc } = req.body
     const new_plan = {
         plan_id: uid(5),
-        dis, price, duration, volume,
+        dis, price, duration, volume, grpc
     }
     new Plan(new_plan).save()
 
@@ -156,6 +157,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
             "password",
             "dis",
             "capacity",
+            "grpc_id"
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
@@ -164,7 +166,8 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
         user_name,
         password,
         dis,
-        capacity
+        capacity,
+        grpc_id
     } = req.body
 
     const new_server_class = new server_class({ url, user_name, password: helper.encrypt(password) })
@@ -176,6 +179,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
             password: helper.encrypt(password),
             dis,
             capacity,
+            grpc_id,
             server_id: uid(5)
         }
         new Server(new_server).save()
@@ -289,13 +293,13 @@ router.post("/add_service", midels.check_client, async (req, res) => {
         if (price > credit) return res_handler.failed(res, "NOT_ENOUGH_CREDIT")
     }
 
-    const { volume, duration } = selected_plan
+    const { volume, duration, grpc } = selected_plan
 
     const new_service = {
         expire_date: duration == 0 ? 0 : Date.now() + (duration * 1000 * 60 * 60 * 24),
         flow: volume,
         server_id,
-        protocol,
+        protocol: grpc ? "grpc" : protocol,
         name
     }
 
@@ -318,7 +322,7 @@ router.post("/add_service", midels.check_client, async (req, res) => {
     new Service(service_to_save).save()
     res_handler.success(res, "سرویس با موفقیت ایجاد شد", result)
     if (access === 0) {
-        await User.findOneAndUpdate({ user_id }, { $inc: { credit: price * -1 } })
+        await User.findOneAndUpdate({ user_id }, { $inc: { credit: selected_plan.price * -1 } })
     }
     await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1, capacity_used: 1 } })
 
@@ -336,7 +340,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { service_id, name, server_id: new_server_id, user } = req.body
     const new_server = await Server.findOne({ server_id: new_server_id, active: true })
-    if (!new_server) res_handler.failed(res, "INVALID_SERVER")
+    if (!new_server) return res_handler.failed(res, "INVALID_SERVER")
 
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed("INVALID_SERVICE")

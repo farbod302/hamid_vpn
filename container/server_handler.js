@@ -93,8 +93,23 @@ const Server = class {
         return generator()
     }
 
-    async create_service({ expire_date, flow, name, protocol }) {
 
+
+    create_grpc_service({ expire_date, flow, name }) {
+        const new_client = {
+            ...create_server_default.settings
+        }
+        new_client.clients[0].id = crypto.randomUUID()
+        new_client.clients[0].email = uid(9)
+        new_client.clients[0].totalGB = flow * (1024 ** 3)
+        new_client.clients[0].expiryTime = expire_date
+        new_client.clients[0].subId = name
+
+    }
+
+
+    async create_service({ expire_date, flow, name, protocol }) {
+        if (protocol === "grpc") return this.create_grpc_service({ expire_date, flow, name })
         const cur_services = await this.get_all_services()
         const used_ports = cur_services.map(e => e.port)
         const body = { ...create_server_default }
@@ -187,7 +202,7 @@ const Server = class {
     async get_service({ service_id }) {
         const data = await this.get_request("panel/api/inbounds/get/" + service_id)
         if (!data[0]) {
-            await Service.findOneAndUpdate({ server_id: this.server_id, service_id_on_server:service_id }, { $set: { active: false } })
+            await Service.findOneAndUpdate({ server_id: this.server_id, service_id_on_server: service_id }, { $set: { active: false } })
             return null
         }
         return data[0]

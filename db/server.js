@@ -9,7 +9,8 @@ const server = mongoose.Schema({
     password: String,
     capacity: Number,
     capacity_used: { type: Number, default: 0 },
-    active: { type: Boolean, default: true }
+    active: { type: Boolean, default: true },
+    grpc_id: Number
 })
 
 
