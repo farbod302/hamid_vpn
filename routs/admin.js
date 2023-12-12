@@ -304,6 +304,32 @@ router.post("/add_service", midels.check_client, async (req, res) => {
     }
 
     const result = await all_servers.create_service(new_service)
+    if (result.is_grpc) {
+        const { id, expiryTime, client_email } = result
+        const service_to_save = {
+            service_id: uid(6),
+            service_id_on_server: id,
+            creator_id: req.body.user.user_id,
+            plan_id: plan_id,
+            volume,
+            name,
+            server_id: server_id,
+            protocol: "grpc",
+            credit: selected_plan.price,
+            start_date: Date.now(),
+            end_date: expiryTime,
+            is_grpc: true,
+            grpc_client_email: client_email
+        }
+
+        new Service(service_to_save).save()
+        res_handler.success(res, "سرویس با موفقیت ایجاد شد", result)
+        if (access === 0) {
+            await User.findOneAndUpdate({ user_id }, { $inc: { credit: selected_plan.price * -1 } })
+        }
+        await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1, capacity_used: 1 } })
+        return
+    }
     const { id, expiryTime } = result
     const service_to_save = {
         service_id: uid(6),
@@ -408,9 +434,13 @@ router.post("/disable_enable_service", midels.check_admin, async (req, res) => {
     const { op, service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed("INVALID_SERVICE")
-    const { service_id_on_server, server_id } = selected_service
-    const result = await all_servers.disable_enable_service({ server_id, service_id_on_server, op })
-    res_handler.success(res, "تغییرات با موفقیت انجام شد", result)
+    const { service_id_on_server, server_id, is_grpc, grpc_client_email } = selected_service
+    if (is_grpc) {
+        await all_servers.disable_enable_grpc_service({ server_id, service_id_on_server, op, grpc_client_email })
+    } else {
+        await all_servers.disable_enable_service({ server_id, service_id_on_server, op })
+    }
+    res_handler.success(res, "تغییرات با موفقیت انجام شد",)
 
 
 })

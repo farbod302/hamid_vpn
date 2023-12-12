@@ -27,7 +27,7 @@ router.get("/link/:service_id", midels.check_client, async (req, res) => {
     const url_parser = new URL(url)
     const { protocol, port, settings, remark } = service_data
     const { clients } = settings
-    const connection_user = clients[0]
+    let connection_user = clients[0]
     const { id, email } = connection_user
     let link, qrcode
     if (protocol === "vless") {
@@ -54,6 +54,35 @@ router.get("/link/:service_id", midels.check_client, async (req, res) => {
         qrcode = await helper.generate_qr_code(link)
     }
     res_handler.success(res, "", { link, qrcode })
+
+})
+
+
+router.get("/grpc_link/:service_id", async (req, res) => {
+    const { service_id } = req.params
+    const selected_service = await Service.findOne({ service_id })
+    if (!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
+    const { service_id_on_server, server_id, grpc_client_email } = selected_service
+    const service_data = await all_servers.get_service_data({
+        server_id,
+        is_grpc: false,
+        service_id_on_server
+
+    })
+
+    const selected_server = await Server.findOne({ server_id })
+    const { url } = selected_server
+    const url_parser = new URL(url)
+    const { settings, streamSettings, port, remark } = service_data
+
+    const selected_client = settings.clients.find(e => e.email === grpc_client_email)
+    const { id } = selected_client
+    const static_str = "?type=grpc&serviceName=&security=tls&fp=chrome&alpn=http%2F1.1%2Ch2&sni="
+
+    const link = `vless://${id}@${streamSettings.tlsSettings.serverName}:${port}${static_str}${url_parser.hostname}#${remark}-${grpc_client_email}`
+    const qrcode = await helper.generate_qr_code(link)
+    res_handler.success(res, "", { link, qrcode })
+
 
 })
 
@@ -100,11 +129,10 @@ router.get("/services", midels.check_client, async (req, res) => {
 
     ])
 
-    console.log({ user_services: user_services.length });
     const services_status = user_services.map(async service => {
-        const { server_id, service_id_on_server } = service
-        const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server })
-        console.log("hi");
+        const { server_id, service_id_on_server, is_grpc, grpc_client_email } = service
+        const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server, is_grpc, grpc_client_email })
+        console.log({ server_side_data });
         if (!server_side_data) return null
         return {
             ...service,
@@ -117,9 +145,9 @@ router.get("/services", midels.check_client, async (req, res) => {
 
     const clean_data = compleat_data.map(service => {
         try {
-            const { name, server_side_data, server, user, service_id } = service
+            const { name, server_side_data, server, user, service_id, is_grpc } = service
             const { up, down, expiryTime: expiry_time, enable, port, settings } = server_side_data
-            const { totalGB } = settings?.clients[0]
+            const { totalGB } = settings?.clients[0] || server_side_data
 
             return {
                 name,
@@ -130,7 +158,8 @@ router.get("/services", midels.check_client, async (req, res) => {
                 port,
                 total_volume: totalGB / (1024 ** 3) + "GB",
                 creator: user[0].name,
-                service_id
+                service_id,
+                is_grpc
             }
         }
         catch {
@@ -199,10 +228,10 @@ router.get("/tickets", midels.check_client, async (req, res) => {
     ])
 
 
-    const clean_tickets=tickets.map(t=>{
-        return{
+    const clean_tickets = tickets.map(t => {
+        return {
             ...t,
-            creator:t.creator[0].name
+            creator: t.creator[0].name
         }
     })
     res_handler.success(res, "", clean_tickets)

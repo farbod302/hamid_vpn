@@ -6,11 +6,12 @@ const helper = require("./helper")
 const Service = require("../db/service")
 const Server = class {
     constructor(server) {
-        const { url, user_name, password, server_id } = server
+        const { url, user_name, password, server_id, grpc_id } = server
         this.url = url
         this.user_name = user_name
         this.password = helper.decrypt(password)
         this.server_id = server_id
+        this.grpc_id = grpc_id
     }
     async init_server() {
         const data = await axios.post(`${this.url}/login`, {
@@ -55,6 +56,7 @@ const Server = class {
                 }
             })
             data = data.data
+            console.log({ data });
             if (!data.obj) return { data: data.success }
             const { obj } = data
             const is_array = obj.length
@@ -95,21 +97,29 @@ const Server = class {
 
 
 
-    create_grpc_service({ expire_date, flow, name }) {
+    async create_grpc_service({ expire_date, flow, name }) {
         const new_client = {
             ...create_server_default.settings
         }
+        const client_email = uid(9)
         new_client.clients[0].id = crypto.randomUUID()
-        new_client.clients[0].email = uid(9)
+        new_client.clients[0].email = client_email
         new_client.clients[0].totalGB = flow * (1024 ** 3)
         new_client.clients[0].expiryTime = expire_date
         new_client.clients[0].subId = name
 
+
+        await this.post_request("panel/inbound/addClient", this.clean_to_send({
+            settings: { clients: new_client.clients },
+            id: this.grpc_id,
+            client_email
+        }))
+        return { id: this.grpc_id, expiryTime: expire_date, is_grpc: true, client_email }
     }
 
 
     async create_service({ expire_date, flow, name, protocol }) {
-        if (protocol === "grpc") return this.create_grpc_service({ expire_date, flow, name })
+        if (protocol === "grpc") return await this.create_grpc_service({ expire_date, flow, name })
         const cur_services = await this.get_all_services()
         const used_ports = cur_services.map(e => e.port)
         const body = { ...create_server_default }
@@ -199,11 +209,27 @@ const Server = class {
         return result[0] || false
     }
 
-    async get_service({ service_id }) {
+    async get_service({ service_id, is_grpc, grpc_client_email }) {
         const data = await this.get_request("panel/api/inbounds/get/" + service_id)
         if (!data[0]) {
             await Service.findOneAndUpdate({ server_id: this.server_id, service_id_on_server: service_id }, { $set: { active: false } })
             return null
+        }
+        if (is_grpc) {
+            const { settings, port } = data[0]
+            const selected_client = settings.clients.find(e => e.email === grpc_client_email)
+            const {subId,totalGB}=selected_client
+            const client_data=await this.get_request("panel/api/inbounds/getClientTraffics/"+grpc_client_email)
+            if(!client_data[0])return null
+            const {up,down,enable,expiryTime}=client_data[0]
+           const server_side_data={
+            name:subId,
+            port,
+            totalGB,
+            enable,
+            up,down,expiryTime
+           }
+           return server_side_data
         }
         return data[0]
     }
@@ -223,6 +249,18 @@ const Server = class {
         new_body["enable"] = op
         const result = await this.post_request("panel/api/inbounds/update/" + service_id_on_server, this.clean_to_send(new_body))
         return result[0] || false
+    }
+
+    async disable_enable_grpc_service({ service_id_on_server, op, client }) {
+        const cur_id = client.id
+        const new_client = { ...client, enable: op }
+        const result = await this.post_request("panel/inbound/updateClient/" + cur_id, this.clean_to_send({
+            id: service_id_on_server,
+            settings: {
+                clients: [...new_client]
+            }
+        }))
+        return result
     }
 
 
