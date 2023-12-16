@@ -179,6 +179,19 @@ const Server = class {
         return true
     }
 
+    async delete_grpc_service({ service_id_on_server, grpc_client_email }) {
+        const get_client = await this.get_service({
+            service_id: service_id_on_server,
+            is_grpc: true,
+            grpc_client_email: grpc_client_email
+        })
+
+        const { id } = get_client
+        await this.post_request(`panel/inbound/${service_id_on_server}/delClient/${id}`)
+        return true
+
+    }
+
     async edit_link({ service_id_on_server, client }) {
 
         const cur_id = client.id
@@ -196,8 +209,26 @@ const Server = class {
 
     }
 
-    async reset_service({ service_id_on_server, new_ex_date }) {
-        await this.post_request("panel/api/inbounds/resetAllClientTraffics/" + service_id_on_server)
+    async reset_service({ service_id_on_server, new_ex_date, is_grpc, grpc_client_email, volume }) {
+
+        if (is_grpc) {
+            const cur_status = await this.get_service({ service_id: service_id_on_server })
+            console.log({cur_status:cur_status.settings.clients});
+            const { clients } = cur_status.settings
+            const selected_client = clients.find(e=>e.email === grpc_client_email)
+            const new_client = { ...selected_client }
+            new_client.expiryTime = new_ex_date
+            new_client.totalGB = (volume * (1024 ** 3))
+            await this.post_request(`panel/inbound/updateClient/${selected_client.id}`, this.clean_to_send({
+                id: service_id_on_server,
+                settings: {
+                    clients: [new_client]
+                }
+            }))
+            await this.post_request(`panel/inbound/${service_id_on_server}/resetClientTraffic/${grpc_client_email}`)
+            return true
+        }
+
         const cur_status = await this.get_service({ service_id: service_id_on_server })
         if (!cur_status) return false
         const new_body = { ...cur_status }
@@ -205,7 +236,9 @@ const Server = class {
         to_delete.forEach(e => delete new_body[e])
         new_body["expiryTime"] = new_ex_date
         new_body["enable"] = true
+        new_body.settings.clients[0].totalGB = (volume * (1024 ** 3))
         const result = await this.post_request("panel/api/inbounds/update/" + service_id_on_server, this.clean_to_send(new_body))
+        await this.post_request("panel/api/inbounds/resetAllClientTraffics/" + service_id_on_server)
         return result[0] || false
     }
 
@@ -218,18 +251,24 @@ const Server = class {
         if (is_grpc) {
             const { settings, port } = data[0]
             const selected_client = settings.clients.find(e => e.email === grpc_client_email)
-            const {subId,totalGB}=selected_client
-            const client_data=await this.get_request("panel/api/inbounds/getClientTraffics/"+grpc_client_email)
-            if(!client_data[0])return null
-            const {up,down,enable,expiryTime}=client_data[0]
-           const server_side_data={
-            name:subId,
-            port,
-            totalGB,
-            enable,
-            up,down,expiryTime
-           }
-           return server_side_data
+            if (!selected_client) {
+                await Service.findOneAndUpdate({ server_id: this.server_id, service_id_on_server: service_id }, { $set: { active: false } })
+                return null
+            }
+            const { subId, totalGB, enable, id } = selected_client
+            const client_data = await this.get_request("panel/api/inbounds/getClientTraffics/" + grpc_client_email)
+            if (!client_data[0]) return null
+            const { up, down, expiryTime } = client_data[0]
+            const server_side_data = {
+                name: subId,
+                id,
+                port,
+                totalGB,
+                enable,
+                up, down, expiryTime
+            }
+            console.log({ server_side_data });
+            return server_side_data
         }
         return data[0]
     }
@@ -257,7 +296,7 @@ const Server = class {
         const result = await this.post_request("panel/inbound/updateClient/" + cur_id, this.clean_to_send({
             id: service_id_on_server,
             settings: {
-                clients: [...new_client]
+                clients: [new_client]
             }
         }))
         return result

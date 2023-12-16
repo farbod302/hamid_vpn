@@ -35,7 +35,8 @@ const all_servers = {
         })
         return result
     },
-    async edit_service_name({ name, server_id, service_id_on_server }) {
+    async edit_service_name({ name, server_id, service_id_on_server, is_grpc }) {
+        if (is_grpc) return true
         const selected_server = this.servers.find(e => e.server_id === server_id)
         if (!selected_server) return false
         const { server_class } = selected_server
@@ -49,22 +50,26 @@ const all_servers = {
 
     },
 
-    async delete_service({ server_id, service_id_on_server }) {
+
+
+
+    async delete_service({ server_id, service_id_on_server, is_grpc, grpc_client_email }) {
         const selected_server = this.servers.find(e => e.server_id === server_id)
         if (!selected_server) return false
         const { server_class } = selected_server
+        if (is_grpc) return await server_class.delete_grpc_service({ service_id_on_server, grpc_client_email })
         const result = await server_class.delete_service({
             service_id_on_server
         })
         return result
     },
 
-    async get_service_data({ server_id, service_id_on_server,is_grpc,grpc_client_email }) {
+    async get_service_data({ server_id, service_id_on_server, is_grpc, grpc_client_email }) {
         const selected_server = this.servers.find(e => e.server_id === server_id)
         if (!selected_server) return false
         const { server_class } = selected_server
         const result = await server_class.get_service({
-            service_id: service_id_on_server,is_grpc,grpc_client_email
+            service_id: service_id_on_server, is_grpc, grpc_client_email
         })
         return result
     },
@@ -89,7 +94,7 @@ const all_servers = {
     },
 
 
-    async change_link({ server_id, service_id_on_server, client_email }) {
+    async change_link({ server_id, service_id_on_server, grpc_client_email }) {
 
         const selected_server = this.servers.find(e => e.server_id === server_id)
         if (!selected_server) return false
@@ -98,9 +103,9 @@ const all_servers = {
         const service = await this.get_service_data({ server_id, service_id_on_server })
         const { settings } = service
         let client
-        if (!client_email) client = settings.clients[0]
+        if (!grpc_client_email) client = settings.clients[0]
         else {
-            client = settings.clients.find(e => e.email === client_email)
+            client = settings.clients.find(e => e.email === grpc_client_email)
         }
         const result = await server_class.edit_link({ service_id_on_server, client })
         return result
@@ -108,11 +113,11 @@ const all_servers = {
     },
 
 
-    async reset_service({ server_id, service_id_on_server, new_ex_date }) {
+    async reset_service({ server_id, service_id_on_server, new_ex_date,is_grpc,grpc_client_email,volume }) {
         const selected_server = this.servers.find(e => e.server_id === server_id)
         if (!selected_server) return false
         const { server_class } = selected_server
-        await server_class.reset_service({ service_id_on_server, new_ex_date })
+        await server_class.reset_service({ service_id_on_server, new_ex_date,is_grpc,grpc_client_email,volume })
         return { status: true }
     },
     async disable_enable_grpc_service({ server_id, service_id_on_server, op, grpc_client_email }) {
@@ -120,9 +125,8 @@ const all_servers = {
         if (!selected_server) return false
         const service = await this.get_service_data({ server_id, service_id_on_server })
         const { settings } = service
-        const client = settings.find(e => e.email === grpc_client_email)
-        console.log({ client });
-        if(!client)return
+        const client = settings.clients.find(e => e.email === grpc_client_email)
+        if (!client) return
         const { server_class } = selected_server
         const result = await server_class.disable_enable_grpc_service({
             service_id_on_server, op, client

@@ -132,7 +132,6 @@ router.get("/services", midels.check_client, async (req, res) => {
     const services_status = user_services.map(async service => {
         const { server_id, service_id_on_server, is_grpc, grpc_client_email } = service
         const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server, is_grpc, grpc_client_email })
-        console.log({ server_side_data });
         if (!server_side_data) return null
         return {
             ...service,
@@ -156,7 +155,7 @@ router.get("/services", midels.check_client, async (req, res) => {
                 expiry_time,
                 active: enable,
                 port,
-                total_volume: totalGB / (1024 ** 3) + "GB",
+                total_volume: (totalGB / (1024 ** 3)).toFixed(2) + "GB",
                 creator: user[0].name,
                 service_id,
                 is_grpc

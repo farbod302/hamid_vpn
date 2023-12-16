@@ -370,7 +370,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
 
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed("INVALID_SERVICE")
-    const { server_id, service_id_on_server, creator_id } = selected_service
+    const { server_id, service_id_on_server, creator_id, is_grpc, grpc_client_email } = selected_service
 
     const { access, user_id } = user
 
@@ -380,7 +380,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
 
     if (server_id === new_server_id) {
         const result = await all_servers.edit_service_name({
-            name, service_id_on_server, server_id
+            name, service_id_on_server, server_id, is_grpc
         })
         if (result) {
             await Service.findOneAndUpdate({ service_id }, { $set: { name } })
@@ -389,16 +389,28 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
     } else {
         const server_cur_status = await all_servers.get_service_data({ server_id, service_id_on_server })
         const { expiryTime, protocol, up, down } = server_cur_status
-        // todo :calc data used before
-        await all_servers.delete_service({ server_id, service_id_on_server })
+        await all_servers.delete_service({ server_id, service_id_on_server, is_grpc, grpc_client_email })
+        console.log({
+            volume: selected_service.volume,
+            up, down
+        });
         const result = await all_servers.create_service({
-            server_id: new_server_id, flow: selected_service.volume === 0 ? 0 : (selected_service.volume * (1024 ** 3) - (up + down)), expire_date: expiryTime, name, protocol
+            server_id: new_server_id,
+            flow: selected_service.volume === 0 ? 0 : ((selected_service.volume) - ((up + down) / (1040 ** 3))),
+            expire_date: expiryTime,
+            name,
+            protocol: is_grpc ? "grpc" : protocol
         })
         if (!result) return res_handler.failed(res, "UNKNOWN_ERROR")
+        console.log({ result });
         const { id } = result
-        await Service.findOneAndUpdate({ server_id }, { $set: { service_id_on_server: id, server_id: new_server_id } })
+        await Service.findOneAndUpdate({ service_id }, { $set: { service_id_on_server: id, server_id: new_server_id } })
         await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: 1 } })
         await Server.findOneAndUpdate({ server_id: new_server_id }, { $inc: { capacity: -1 } })
+        if (is_grpc) {
+            await Service.findOneAndUpdate({ service_id }, { $set: { grpc_client_email: result.client_email || "" } })
+
+        }
         return res_handler.success(res, "سرویس با موفقیت ویرایش شد", result)
 
     }
@@ -478,14 +490,14 @@ router.post("/change_link", midels.check_client, async (req, res) => {
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { service_id, user } = req.body
     const selected_service = await Service.findOne({ service_id })
-    const { server_id, service_id_on_server, creator_id } = selected_service
+    const { server_id, service_id_on_server, creator_id, is_grpc, grpc_client_email } = selected_service
 
     const { access, user_id } = user
     if (access === 0) {
         if (user_id !== creator_id) return res_handler.failed(res, "ACCESS_DENY")
     }
 
-    const result = await all_servers.change_link({ server_id, service_id_on_server })
+    const result = await all_servers.change_link({ server_id, service_id_on_server, is_grpc, grpc_client_email })
     res_handler.success(res, "تغییرات با موفقیت انجام شد", result)
 
 
@@ -503,7 +515,7 @@ router.post("/reset_service", midels.check_client, async (req, res) => {
     const { service_id, user } = req.body
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
-    const { server_id, service_id_on_server, plan_id } = selected_service
+    const { server_id, service_id_on_server, plan_id ,is_grpc,grpc_client_email} = selected_service
     const selected_plan = await Plan.findOne({ plan_id })
     const { price } = selected_plan
     const { access, user_id } = user
@@ -514,9 +526,9 @@ router.post("/reset_service", midels.check_client, async (req, res) => {
     }
 
 
-    const { duration } = selected_plan
+    const { duration ,volume} = selected_plan
     const new_ex_date = duration == 0 ? 0 : Date.now() + (duration * 1000 * 60 * 60 * 24)
-    const result = await all_servers.reset_service({ server_id, service_id_on_server, new_ex_date })
+    const result = await all_servers.reset_service({ server_id, service_id_on_server, new_ex_date ,is_grpc,grpc_client_email,volume})
     res_handler.success(res, "سرویس تمدید شد", result)
     if (access === 0) {
         await User.findOneAndUpdate({ user_id }, { $inc: { credit: price * -1 } })
