@@ -74,12 +74,12 @@ router.get("/grpc_link/:service_id", async (req, res) => {
     const { url } = selected_server
     const url_parser = new URL(url)
     const { settings, streamSettings, port, remark } = service_data
-
+    const server_name=service_data.streamSettings.tlsSettings.settings.serverName
     const selected_client = settings.clients.find(e => e.email === grpc_client_email)
     const { id } = selected_client
     const static_str = "?type=grpc&serviceName=&security=tls&fp=chrome&alpn=http%2F1.1%2Ch2&sni="
 
-    const link = `vless://${id}@${streamSettings.tlsSettings.serverName}:${port}${static_str}${url_parser.hostname}#${remark}-${grpc_client_email}`
+    const link = `vless://${id}@${streamSettings.tlsSettings.serverName}:${port}${static_str}${server_name}#${remark}-${grpc_client_email}`
     const qrcode = await helper.generate_qr_code(link)
     res_handler.success(res, "", { link, qrcode })
 
