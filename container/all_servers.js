@@ -50,6 +50,14 @@ const all_servers = {
 
     },
 
+    async get_client_data({ server_id, client_email }) {
+        const selected_server = this.servers.find(e => e.server_id === server_id)
+        if (!selected_server) return false
+        const { server_class } = selected_server
+        const data=await server_class.get_client_data({ client_email })
+        return data
+    },
+
 
 
 
@@ -113,11 +121,11 @@ const all_servers = {
     },
 
 
-    async reset_service({ server_id, service_id_on_server, new_ex_date,is_grpc,grpc_client_email,volume }) {
+    async reset_service({ server_id, service_id_on_server, new_ex_date, is_grpc, grpc_client_email, volume }) {
         const selected_server = this.servers.find(e => e.server_id === server_id)
         if (!selected_server) return false
         const { server_class } = selected_server
-        await server_class.reset_service({ service_id_on_server, new_ex_date,is_grpc,grpc_client_email,volume })
+        await server_class.reset_service({ service_id_on_server, new_ex_date, is_grpc, grpc_client_email, volume })
         return { status: true }
     },
     async disable_enable_grpc_service({ server_id, service_id_on_server, op, grpc_client_email }) {

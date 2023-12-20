@@ -242,6 +242,12 @@ const Server = class {
         return result[0] || false
     }
 
+
+    async get_client_data({client_email}){
+        const data=await this.get_request("panel/api/inbounds/getClientTraffics/"+client_email)
+        return data
+    }
+
     async get_service({ service_id, is_grpc, grpc_client_email }) {
         const data = await this.get_request("panel/api/inbounds/get/" + service_id)
         if (!data[0]) {

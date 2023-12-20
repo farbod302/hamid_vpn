@@ -12,7 +12,7 @@ var shortHash = require('short-hash');
 const { uid } = require("uid")
 const midels = require("../container/midel")
 const all_servers = require("../container/all_servers")
-
+const fs = require("fs")
 const server_class = require("../container/server_handler")
 const Ticket = require("../db/ticket")
 
@@ -76,6 +76,9 @@ router.post("/add_credit", midels.check_admin, async (req, res) => {
     new Notification(new_notification).save()
 
 })
+
+
+
 
 
 router.post("/block_client", midels.check_admin, async (req, res) => {
@@ -515,7 +518,7 @@ router.post("/reset_service", midels.check_client, async (req, res) => {
     const { service_id, user } = req.body
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
-    const { server_id, service_id_on_server, plan_id ,is_grpc,grpc_client_email} = selected_service
+    const { server_id, service_id_on_server, plan_id, is_grpc, grpc_client_email } = selected_service
     const selected_plan = await Plan.findOne({ plan_id })
     const { price } = selected_plan
     const { access, user_id } = user
@@ -526,9 +529,9 @@ router.post("/reset_service", midels.check_client, async (req, res) => {
     }
 
 
-    const { duration ,volume} = selected_plan
+    const { duration, volume } = selected_plan
     const new_ex_date = duration == 0 ? 0 : Date.now() + (duration * 1000 * 60 * 60 * 24)
-    const result = await all_servers.reset_service({ server_id, service_id_on_server, new_ex_date ,is_grpc,grpc_client_email,volume})
+    const result = await all_servers.reset_service({ server_id, service_id_on_server, new_ex_date, is_grpc, grpc_client_email, volume })
     res_handler.success(res, "سرویس تمدید شد", result)
     if (access === 0) {
         await User.findOneAndUpdate({ user_id }, { $inc: { credit: price * -1 } })
@@ -562,6 +565,19 @@ router.post("/answer_ticket", midels.check_admin, async (req, res) => {
     res_handler.success(res, "پاسخ شما ثبت شد")
 
 })
+
+
+router.post("/add_admin_note", midels.check_admin,(req, res) => {
+    const { note } = req.body
+    const new_admin_note = {
+        msg: note,
+        expire_date: Date.now() + (1000 * 60 * 60 * 24)
+    }
+
+    fs.writeFileSync(`${__dirname}/../admin_msg.json`, JSON.stringify(new_admin_note))
+    res_handler.success(res, "پیام ثبت شد", {})
+})
+
 
 
 

@@ -9,8 +9,9 @@ const Plan = require("../db/plan")
 const Ticket = require("../db/ticket")
 const helper = require("../container/helper")
 const Notification = require("../db/notification")
+const Transaction = require("../db/transaction")
 const router = express.Router()
-
+const fs = require("fs")
 
 
 router.get("/link/:service_id", midels.check_client, async (req, res) => {
@@ -74,7 +75,7 @@ router.get("/grpc_link/:service_id", async (req, res) => {
     const { url } = selected_server
     const url_parser = new URL(url)
     const { settings, streamSettings, port, remark } = service_data
-    const server_name=service_data.streamSettings.tlsSettings.settings.serverName
+    const server_name = service_data.streamSettings.tlsSettings.settings.serverName
     const selected_client = settings.clients.find(e => e.email === grpc_client_email)
     const { id } = selected_client
     const static_str = "?type=grpc&serviceName=&security=tls&fp=chrome&alpn=http%2F1.1%2Ch2&sni="
@@ -239,6 +240,47 @@ router.get("/tickets", midels.check_client, async (req, res) => {
 })
 
 
+
+router.get("/dashboard", midels.check_client, async (req, res) => {
+    const { user } = req.body
+    const promises = [
+        { credit: await User.findOne({ user_id: user.user_id }, { credit: 1 }) },
+        { services_count: await Service.find({ creator_id: user.user_id, active: true }).count() },
+        { transactions_count: await Transaction.find({ user_id: user.user_id }).count() }
+    ]
+
+    const data = await Promise.all(promises)
+    const response = {
+        credit: data[0].credit.credit,
+        services_count: data[1].services_count,
+        transaction_count: data[2].transactions_count
+    }
+    const admin_note_file = fs.readFileSync(`${__dirname}/../admin_msg.json`)
+    const admin_note = JSON.parse(admin_note_file.toString())
+    const now = Date.now()
+    if (now < admin_note.expire_date) response.admin_note = admin_note.msg
+    else response.admin_note = null
+    res_handler.success(res, "", response)
+})
+
+
+router.get("/transactions", midels.check_client, async (req, res) => {
+    const { user } = req.body
+    const { access, user_id } = user
+    const query = access === 1 ? {} : { user_id }
+    const transactions = await Transaction.aggregate([
+        { $match: query },
+        {
+            $lookup: {
+                from: "users",
+                localField: "user_id",
+                foreignField: "user_id",
+                as: "user"
+            }
+        }
+    ])
+    res_handler.success(res, "", transactions.map(e => { return { ...e, user: e.user[0].name } }))
+})
 
 
 

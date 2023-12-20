@@ -1,6 +1,7 @@
 const express = require("express")
 const router = express.Router()
 const Server = require("../db/server")
+const Service = require("../db/service")
 const helper = require("../container/helper")
 const res_handler = require("../container/res_handler")
 const all_servers = require("../container/all_servers")
@@ -18,6 +19,20 @@ router.post("/get_service_traffic", async (req, res) => {
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     try {
         const { connection_link } = req.body
+
+        if (connection_link.indexOf("type=grpc") > -1) {
+            const email = connection_link.slice(-9)
+            const selected_service = await Service.findOne({ grpc_client_email: email })
+            const { server_id } = selected_service
+            const data = await all_servers.get_client_data({ server_id, client_email: email })
+            const { total, up, down, expiryTime } = data[0]
+            return res_handler.success(res, "", {
+                total: total,
+                used: up + down,
+                expiryTime
+            })
+        }
+
         if (connection_link.startsWith("vless") && connection_link.startsWith("vmess")) return res_handler.failed(res, "INVALID_LINK")
         const protocol = connection_link.startsWith("vless") ? "vless" : "vmess"
         if (protocol === "vless") {
@@ -52,7 +67,8 @@ router.post("/get_service_traffic", async (req, res) => {
             })
         }
     }
-    catch {
+    catch (err) {
+        console.log({ err });
         return res_handler.failed(res, "INVALID_LINK")
     }
 })
