@@ -567,7 +567,7 @@ router.post("/answer_ticket", midels.check_admin, async (req, res) => {
 })
 
 
-router.post("/add_admin_note", midels.check_admin,(req, res) => {
+router.post("/add_admin_note", midels.check_admin, (req, res) => {
     const { note } = req.body
     const new_admin_note = {
         msg: note,
@@ -577,6 +577,7 @@ router.post("/add_admin_note", midels.check_admin,(req, res) => {
     fs.writeFileSync(`${__dirname}/../admin_msg.json`, JSON.stringify(new_admin_note))
     res_handler.success(res, "پیام ثبت شد", {})
 })
+
 
 
 

@@ -75,12 +75,12 @@ router.get("/grpc_link/:service_id", async (req, res) => {
     const { url } = selected_server
     const url_parser = new URL(url)
     const { settings, streamSettings, port, remark } = service_data
-    const server_name = service_data.streamSettings.tlsSettings.settings.serverName
+    const server_name = service_data.streamSettings.tlsSettings.serverName
     const selected_client = settings.clients.find(e => e.email === grpc_client_email)
     const { id } = selected_client
     const static_str = "?type=grpc&serviceName=&security=tls&fp=chrome&alpn=http%2F1.1%2Ch2&sni="
-
-    const link = `vless://${id}@${streamSettings.tlsSettings.serverName}:${port}${static_str}${server_name}#${remark}-${grpc_client_email}`
+    const link = `vless://${id}@${streamSettings.externalProxy[0].dest}:${port}${static_str}${server_name}#${remark}-${grpc_client_email}`
+    console.log({link});
     const qrcode = await helper.generate_qr_code(link)
     res_handler.success(res, "", { link, qrcode })
 
@@ -281,6 +281,46 @@ router.get("/transactions", midels.check_client, async (req, res) => {
     ])
     res_handler.success(res, "", transactions.map(e => { return { ...e, user: e.user[0].name } }))
 })
+
+
+router.get("/inactive_services", midels.check_admin, async (req, res) => {
+
+    const inactive_services = await Service.aggregate([{ $match: { end_date: { $lt: Date.now() } } },
+    {
+        $lookup: {
+            from: "servers",
+            localField: "server_id",
+            foreignField: "server_id",
+            as: "server"
+        }
+    },
+    {
+        $lookup: {
+            from: "users",
+            localField: "creator_id",
+            foreignField: "user_id",
+            as: "user"
+        }
+    },
+
+    ])
+
+    const clean_data = inactive_services.map(e => {
+        const { name, server, user, service_id, is_grpc,end_date } = e
+        return {
+            name,
+            server: server[0].dis,
+            expiry_time:end_date,
+            creator: user[0].name,
+            service_id,
+            is_grpc
+        }
+
+
+    })
+    res_handler.success(res, "", clean_data)
+})
+
 
 
 
