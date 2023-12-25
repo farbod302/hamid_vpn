@@ -203,8 +203,14 @@ router.get("/notifications", midels.check_client, async (req, res) => {
 
     ])
     res_handler.success(res, "", user_notifications)
+})
 
+
+router.get("/seen_notification", midels.check_client,async (req, res) => {
+    const { user } = req.body
+    const { user_id } = user
     await User.findOneAndUpdate({ user_id }, { $set: { last_notification_seen: Date.now() } })
+    res_handler.success(res,"انجام شد",{})
 })
 
 
@@ -285,7 +291,7 @@ router.get("/transactions", midels.check_client, async (req, res) => {
 
 router.get("/inactive_services", midels.check_admin, async (req, res) => {
 
-    const inactive_services = await Service.aggregate([{ $match: { end_date: { $lt: Date.now() }, delete: false } },
+    const inactive_services = await Service.aggregate([{ $match: { end_date: { $lt: Date.now(), $gt: 0 }, delete: false, active: true } },
     {
         $lookup: {
             from: "servers",

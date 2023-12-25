@@ -271,6 +271,56 @@ router.post("/send_notification", midels.check_admin, async (req, res) => {
 })
 
 
+router.post("/delete_user", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "user_id"
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
+    const { user_id } = req.body
+    await User.findOneAndUpdate({ user_id }, { $set: { delete: true, active: false } })
+    res_handler.success(res, "کاربر حذف شد", {})
+})
+
+
+router.post("/delete_server", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "server_id"
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
+    const { server_id } = req.body
+    await Server.findOneAndUpdate({ server_id }, { $set: { delete: true } })
+    res_handler.success(res, "سرور حذف شد", {})
+})
+
+router.get("/plan_price/:service_id", async (req, res) => {
+    const { service_id } = req.params
+    const selected_service = await Service.findOne({ service_id })
+    if (!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
+    const { plan_id } = selected_service
+    const selected_plan = await Plan.findOne({ plan_id })
+    res_handler.success(res, "", {
+        price: selected_plan?.price || 0
+    })
+})
+
+
+router.post("/delete_plan", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "plan_id"
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
+    const { plan_id } = req.body
+    await Plan.findOneAndUpdate({ plan_id }, { $set: { delete: true } })
+    res_handler.success(res, "طرح فروش حذف شد", {})
+})
+
+
 router.post("/add_service", midels.check_client, async (req, res) => {
 
 
@@ -352,6 +402,18 @@ router.post("/add_service", midels.check_client, async (req, res) => {
     res_handler.success(res, "سرویس با موفقیت ایجاد شد", result)
     if (access === 0) {
         await User.findOneAndUpdate({ user_id }, { $inc: { credit: selected_plan.price * -1 } })
+
+        const new_transaction = {
+            transaction_id: uid(8),
+            credit: selected_plan.price * -1,
+            date: Date.now(),
+            user_id,
+            created_by_admin: false,
+            note: "خرید اشتراک جدید: سرویس " + name
+        }
+        new Transaction(new_transaction).save()
+
+        
     }
     await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1, capacity_used: 1 } })
 
@@ -438,7 +500,7 @@ router.post("/disable_enable_server", midels.check_admin, async (req, res) => {
 })
 
 
-router.post("/disable_enable_service", midels.check_admin, async (req, res) => {
+router.post("/disable_enable_service", midels.check_client, async (req, res) => {
     const valid_inputs = helper.check_inputs(
         [
             "service_id",
@@ -518,7 +580,7 @@ router.post("/reset_service", midels.check_client, async (req, res) => {
     const { service_id, user } = req.body
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
-    const { server_id, service_id_on_server, plan_id, is_grpc, grpc_client_email } = selected_service
+    const { server_id, service_id_on_server, plan_id, is_grpc, grpc_client_email, name } = selected_service
     const selected_plan = await Plan.findOne({ plan_id })
     const { price } = selected_plan
     const { access, user_id } = user
@@ -535,6 +597,16 @@ router.post("/reset_service", midels.check_client, async (req, res) => {
     res_handler.success(res, "سرویس تمدید شد", result)
     if (access === 0) {
         await User.findOneAndUpdate({ user_id }, { $inc: { credit: price * -1 } })
+        const new_transaction = {
+            transaction_id: uid(8),
+            credit: price * -1,
+            date: Date.now(),
+            user_id,
+            created_by_admin: false,
+            note: "تمدید سرویس " + name
+        }
+        new Transaction(new_transaction).save()
+
     }
     await Service.findOneAndUpdate({ server_id }, { $set: { active: true, end_date: new_ex_date } })
 
@@ -582,7 +654,7 @@ router.post("/reset_password", midels.check_admin, async (req, res) => {
     if (!helper.check_inputs(["user_id", "new_password"], req.body)) return res_handler.failed(res, "INVALID_INPUTS")
     const { user_id, new_password } = req.body
     await User.findOneAndUpdate({ user_id }, { $set: { password: shortHash(new_password) } })
-    res_handler.success(res,"پسورد تغییر کرد",{})
+    res_handler.success(res, "پسورد تغییر کرد", {})
 })
 
 
