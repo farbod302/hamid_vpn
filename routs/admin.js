@@ -578,7 +578,12 @@ router.post("/add_admin_note", midels.check_admin, (req, res) => {
     res_handler.success(res, "پیام ثبت شد", {})
 })
 
-
+router.post("/reset_password", midels.check_admin, async (req, res) => {
+    if (!helper.check_inputs(["user_id", "new_password"], req.body)) return res_handler.failed(res, "INVALID_INPUTS")
+    const { user_id, new_password } = req.body
+    await User.findOneAndUpdate({ user_id }, { $set: { password: shortHash(new_password) } })
+    res_handler.success(res,"پسورد تغییر کرد",{})
+})
 
 
 

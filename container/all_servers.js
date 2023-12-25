@@ -6,7 +6,7 @@ const all_servers = {
     servers: [],
 
     async init_all_servers() {
-        const all_servers = await Server.find({ active: true })
+        const all_servers = await Server.find({ active: true ,delete:false})
         for (const server of all_servers) {
             const init_server = new ServerClass(server)
             try {

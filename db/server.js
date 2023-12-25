@@ -10,7 +10,9 @@ const server = mongoose.Schema({
     capacity: Number,
     capacity_used: { type: Number, default: 0 },
     active: { type: Boolean, default: true },
-    grpc_id: Number
+    grpc_id: Number,
+    delete: { type: Boolean, default: false }
+
 })
 
 

@@ -8,7 +8,8 @@ const plan = mongoose.Schema({
     volume: Number,
     duration: Number,
     active: { type: Boolean, default: true },
-    grpc: Boolean
+    grpc: Boolean,
+    delete: { type: Boolean, default: false }
 })
 
 

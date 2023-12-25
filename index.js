@@ -3,7 +3,6 @@ const express = require("express")
 const bodyParser = require("body-parser")
 const http = require("http")
 const mongoose = require("mongoose")
-const users = require('./db/users')
 const cors = require("cors")
 
 const app = express()
@@ -23,7 +22,6 @@ keys.forEach(key => app.use(key, routs[key]))
 all_servers.init_all_servers().then(()=>{
     server.listen(port, () => { console.log(`server run on port ${port}`); })
 })
-
 
 
 

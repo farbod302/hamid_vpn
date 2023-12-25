@@ -32,7 +32,7 @@ router.get("/link/:service_id", midels.check_client, async (req, res) => {
     const { id, email } = connection_user
     let link, qrcode
     if (protocol === "vless") {
-        link = `vless://${id}@${url_parser.hostname}:${port}?type=tcp&path=/&host=speedtest.net&headerType=http&security=none#${remark}-${email}`
+        link = `vless://${id}@${url_parser.hostname}:${port}?type=tcp&path=/&host=rh.netfan.top&headerType=http&security=none#${remark}-${email}`
         qrcode = await helper.generate_qr_code(link)
     } else {
         const base_data = {
@@ -45,7 +45,7 @@ router.get("/link/:service_id", midels.check_client, async (req, res) => {
             "type": "http",
             "tls": "none",
             "path": "/",
-            "host": "speedtest.net"
+            "host": "rh.netfan.top"
         }
         base_data["ps"] = remark + "-" + email
         base_data["port"] = port
@@ -80,7 +80,7 @@ router.get("/grpc_link/:service_id", async (req, res) => {
     const { id } = selected_client
     const static_str = "?type=grpc&serviceName=&security=tls&fp=chrome&alpn=http%2F1.1%2Ch2&sni="
     const link = `vless://${id}@${streamSettings.externalProxy[0].dest}:${port}${static_str}${server_name}#${remark}-${grpc_client_email}`
-    console.log({link});
+    console.log({ link });
     const qrcode = await helper.generate_qr_code(link)
     res_handler.success(res, "", { link, qrcode })
 
@@ -89,26 +89,26 @@ router.get("/grpc_link/:service_id", async (req, res) => {
 
 
 router.get("/servers", async (req, res) => {
-    const servers = await Server.find({}, { password: 0 })
+    const servers = await Server.find({ delete: false }, { password: 0 })
     res_handler.success(res, "", { servers })
 })
 router.get("/plans", async (req, res) => {
-    const plans = await Plan.find()
+    const plans = await Plan.find({ delete: false })
     res_handler.success(res, "", { plans })
 })
 
 
 
 router.get("/add_service_dropdown", async (req, res) => {
-    const servers = await Server.find({ active: true }, { password: 0 })
-    const plans = await Plan.find({ active: true })
+    const servers = await Server.find({ active: true, delete: false }, { password: 0 })
+    const plans = await Plan.find({ active: true, delete: false })
     res_handler.success(res, "", { plans, servers })
 })
 
 router.get("/services", midels.check_client, async (req, res) => {
     const { user } = req.body
     const { user_id, access } = user
-    const query = access == 1 ? { active: true } : { creator_id: user_id, active: true }
+    const query = access == 1 ? { active: true, delete: false } : { creator_id: user_id, active: true, delete: false }
 
     const user_services = await Service.aggregate([{ $match: query },
     {
@@ -177,7 +177,7 @@ router.get("/services", midels.check_client, async (req, res) => {
 
 
 router.get("/clients", midels.check_admin, async (req, res) => {
-    const clients = await User.find({}, { password: 0 })
+    const clients = await User.find({ delete: false }, { password: 0 })
     res_handler.success(res, "", clients)
 })
 
@@ -245,7 +245,7 @@ router.get("/dashboard", midels.check_client, async (req, res) => {
     const { user } = req.body
     const promises = [
         { credit: await User.findOne({ user_id: user.user_id }, { credit: 1 }) },
-        { services_count: await Service.find({ creator_id: user.user_id, active: true }).count() },
+        { services_count: await Service.find({ creator_id: user.user_id, active: true, delete: false }).count() },
         { transactions_count: await Transaction.find({ user_id: user.user_id }).count() }
     ]
 
@@ -285,7 +285,7 @@ router.get("/transactions", midels.check_client, async (req, res) => {
 
 router.get("/inactive_services", midels.check_admin, async (req, res) => {
 
-    const inactive_services = await Service.aggregate([{ $match: { end_date: { $lt: Date.now() } } },
+    const inactive_services = await Service.aggregate([{ $match: { end_date: { $lt: Date.now() }, delete: false } },
     {
         $lookup: {
             from: "servers",
@@ -306,11 +306,11 @@ router.get("/inactive_services", midels.check_admin, async (req, res) => {
     ])
 
     const clean_data = inactive_services.map(e => {
-        const { name, server, user, service_id, is_grpc,end_date } = e
+        const { name, server, user, service_id, is_grpc, end_date } = e
         return {
             name,
             server: server[0].dis,
-            expiry_time:end_date,
+            expiry_time: end_date,
             creator: user[0].name,
             service_id,
             is_grpc

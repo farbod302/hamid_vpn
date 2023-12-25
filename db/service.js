@@ -15,7 +15,9 @@ const service = mongoose.Schema({
     name: String,
     active: { type: Boolean, default: true },
     is_grpc: { type: Boolean, default: false },
-    grpc_client_email: { type: String, default: "" }
+    grpc_client_email: { type: String, default: "" },
+    delete: { type: Boolean, default: false }
+
 })
 
 

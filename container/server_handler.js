@@ -357,7 +357,7 @@ const create_server_default = {
                     ],
                     "headers": {
                         "Host": [
-                            "speedtest.net"
+                            "rh.netfan.top"
                         ]
                     }
                 },
