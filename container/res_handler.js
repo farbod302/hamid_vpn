@@ -18,6 +18,8 @@ const res_handler = {
         "INVALID_SERVER_INFO":"مشخصات سرور اشتباه است",
         "INVALID_LINK":"لینک وارد شده نامعتبر است",
         "INVALID_SERVER":"شناسه سرور انتخاب شده نامعتبر است",
+        "INVALID_PASSWORD":"پسورد اشتباه است",
+        "SERVICE_EXPIRE":"مدت زمان دوره به اتمتم رسیده.برای فعال سازی سرویس را تمدید کنید"
     },
 
     success(res, msg, data) {

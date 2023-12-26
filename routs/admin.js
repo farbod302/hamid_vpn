@@ -135,14 +135,15 @@ router.post("/edit_plan", midels.check_admin, async (req, res) => {
             "price",
             "duration",
             "volume",
-            "plan_id"
+            "plan_id",
+            "grpc"
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
-    const { dis, price, duration, volume, plan_id } = req.body
+    const { dis, price, duration, volume, plan_id, grpc } = req.body
     const new_plan = {
         plan_id,
-        dis, price, duration, volume,
+        dis, price, duration, volume, grpc
     }
 
     await Plan.findOneAndReplace({ plan_id }, new_plan)
@@ -413,7 +414,7 @@ router.post("/add_service", midels.check_client, async (req, res) => {
         }
         new Transaction(new_transaction).save()
 
-        
+
     }
     await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1, capacity_used: 1 } })
 
@@ -511,12 +512,13 @@ router.post("/disable_enable_service", midels.check_client, async (req, res) => 
     const { op, service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed("INVALID_SERVICE")
-    const { service_id_on_server, server_id, is_grpc, grpc_client_email } = selected_service
-    if (is_grpc) {
-        await all_servers.disable_enable_grpc_service({ server_id, service_id_on_server, op, grpc_client_email })
-    } else {
-        await all_servers.disable_enable_service({ server_id, service_id_on_server, op })
-    }
+    const { service_id_on_server, server_id, is_grpc, grpc_client_email, end_date } = selected_service
+    if (end_date < Date.now())return res_handler.failed(res,"SERVICE_EXPIRE")
+        if (is_grpc) {
+            await all_servers.disable_enable_grpc_service({ server_id, service_id_on_server, op, grpc_client_email })
+        } else {
+            await all_servers.disable_enable_service({ server_id, service_id_on_server, op })
+        }
     res_handler.success(res, "تغییرات با موفقیت انجام شد",)
 
 
