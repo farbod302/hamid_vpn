@@ -12,7 +12,7 @@ const Notification = require("../db/notification")
 const Transaction = require("../db/transaction")
 const router = express.Router()
 const fs = require("fs")
-const Ativites = require("../db/activites")
+const Activity = require("../db/activites")
 
 
 router.get("/link/:service_id", async (req, res) => {
@@ -314,7 +314,7 @@ router.get("/inactive_services", midels.check_admin, async (req, res) => {
 
 
 router.get("/event",midels.check_admin,async (req,res)=>{
-    const events=await Activites.find()
+    const events=await Activity.find()
     res_handler.success(res,"",{events})
 })
 
