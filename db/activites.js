@@ -2,7 +2,7 @@ const mongoose = require("mongoose")
 
 
 const activity = mongoose.Schema({
-    note: Text,
+    note: String,
     date: Number,
 })
 
