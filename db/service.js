@@ -8,14 +8,13 @@ const service = mongoose.Schema({
     plan_id: String,
     volume: Number,
     server_id: String,
-    protocol_id: String,
+    protocol: String,
     credit: Number,
     start_date: Number,
     end_date: Number,
     name: String,
     active: { type: Boolean, default: true },
-    is_grpc: { type: Boolean, default: false },
-    grpc_client_email: { type: String, default: "" },
+    client_email: { type: String, default: "" },
     delete: { type: Boolean, default: false }
 
 })

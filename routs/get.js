@@ -14,78 +14,61 @@ const router = express.Router()
 const fs = require("fs")
 
 
-router.get("/link/:service_id", midels.check_client, async (req, res) => {
-    const { user } = req.body
-    const { user_id, access } = user
+router.get("/link/:service_id", async (req, res) => {
     const { service_id } = req.params
     const selected_service = await Service.findOne({ service_id })
-    if (!selected_service) return res_handler.failed("INVALID_SERVICE")
-    if (!access && selected_service.creator_id !== user_id) return res_handler.failed(res, "ACCESS_DENY")
-    const { server_id, service_id_on_server } = selected_service
-    const service_data = await all_servers.get_service_data({ server_id, service_id_on_server })
-    const selected_server = await Server.findOne({ server_id })
-    const { url } = selected_server
-    const url_parser = new URL(url)
-    const { protocol, port, settings, remark } = service_data
-    const { clients } = settings
-    let connection_user = clients[0]
-    const { id, email } = connection_user
-    let link, qrcode
-    if (protocol === "vless") {
-        link = `vless://${id}@${url_parser.hostname}:${port}?type=tcp&path=/&host=rh.netfan.top&headerType=http&security=none#${remark}-${email}`
-        qrcode = await helper.generate_qr_code(link)
-    } else {
-        const base_data = {
-            "v": "2",
-            "ps": "",
-            "add": "",
-            "port": "",
-            "id": "",
-            "net": "tcp",
-            "type": "http",
-            "tls": "none",
-            "path": "/",
-            "host": "rh.netfan.top"
-        }
-        base_data["ps"] = remark + "-" + email
-        base_data["port"] = port
-        base_data["add"] = url_parser.hostname
-        base_data["id"] = id
-        link = "vmess://" + btoa(JSON.stringify(base_data))
-        qrcode = await helper.generate_qr_code(link)
+    const { client_email, service_id_on_server, protocol, server_id } = selected_service
+    const links = {
+        grpc: "vless://$id$@cf.w4llbreaker.com:$port$?type=grpc&serviceName=&security=tls&fp=chrome&alpn=http%2F1.1%2Ch2&sni=test.wallbreaker.ir#grpc-$email$",
+        tunnel: "vless://$id$@$server_url$:$port$?type=tcp&path=%2F&host=rh.w4llbreaker.com&headerType=http&security=none#tunnel-$email$",
+        ws: "vless://$id$@cf.w4llbreaker.com:$port$?type=ws&path=%2F&host=test.wallbreaker.ir&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&sni=test.wallbreaker.ir#ws-$email$"
     }
-    res_handler.success(res, "", { link, qrcode })
+    const service_data = await all_servers.get_all_services({ server_id })
 
-})
+    const selected_inbound = service_data.find(e => e.id === service_id_on_server)
+    const { port, settings } = selected_inbound
+    const { clients } = settings
+    const selected_client = clients.find(e => e.email === client_email)
+    const { id } = selected_client
+    const server_info = await Server.findOne({ server_id })
+    const { url } = server_info
+    const keys_to_replace = [
+        {
+            key: "port",
+            value: port
+        },
+        {
+            key: "server_url",
+            value: url.replace("http://","").replace("https://","")
+        },
+        {
+            key: "email",
+            value: client_email
+        },
+        {
+            key: "id",
+            value: id
+        }
 
+    ]
+    const temp_link = links[protocol]
+    const splitted = temp_link.split(/[$$]/i)
 
-router.get("/grpc_link/:service_id", async (req, res) => {
-    const { service_id } = req.params
-    const selected_service = await Service.findOne({ service_id })
-    if (!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
-    const { service_id_on_server, server_id, grpc_client_email } = selected_service
-    const service_data = await all_servers.get_service_data({
-        server_id,
-        is_grpc: false,
-        service_id_on_server
+    keys_to_replace.forEach(k => {
+        const index = splitted.indexOf(k.key)
+        if (index === -1) return
+        splitted[index] = k.value
 
     })
-
-    const selected_server = await Server.findOne({ server_id })
-    const { url } = selected_server
-    const url_parser = new URL(url)
-    const { settings, streamSettings, port, remark } = service_data
-    const server_name = service_data.streamSettings.tlsSettings.serverName
-    const selected_client = settings.clients.find(e => e.email === grpc_client_email)
-    const { id } = selected_client
-    const static_str = "?type=grpc&serviceName=&security=tls&fp=chrome&alpn=http%2F1.1%2Ch2&sni="
-    const link = `vless://${id}@${streamSettings.externalProxy[0].dest}:${port}${static_str}${server_name}#${remark}-${grpc_client_email}`
-    console.log({ link });
-    const qrcode = await helper.generate_qr_code(link)
-    res_handler.success(res, "", { link, qrcode })
-
-
+    const connection_url = splitted.join("")
+    const qr_code = await helper.generate_qr_code(connection_url)
+    res_handler.success(res, "", {
+        link: connection_url,
+        qrcode: qr_code
+    })
 })
+
+
 
 
 router.get("/servers", async (req, res) => {
@@ -131,8 +114,9 @@ router.get("/services", midels.check_client, async (req, res) => {
     ])
 
     const services_status = user_services.map(async service => {
-        const { server_id, service_id_on_server, is_grpc, grpc_client_email } = service
-        const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server, is_grpc, grpc_client_email })
+        const { server_id, service_id_on_server, is_grpc, client_email } = service
+        const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server, is_grpc, client_email })
+        console.log({ server_side_data });
         if (!server_side_data) return null
         return {
             ...service,
@@ -145,21 +129,21 @@ router.get("/services", midels.check_client, async (req, res) => {
 
     const clean_data = compleat_data.map(service => {
         try {
-            const { name, server_side_data, server, user, service_id, is_grpc } = service
-            const { up, down, expiryTime: expiry_time, enable, port, settings } = server_side_data
-            const { totalGB } = settings?.clients[0] || server_side_data
+            const { server_side_data, server, user, service_id, protocol, name: true_name } = service
+            const { name, up, down, expiryTime: expiry_time, enable, settings } = server_side_data
+            const { total } = settings?.clients[0] || server_side_data
 
             return {
                 name,
+                true_name,
                 server: server[0].dis,
                 total_used: ((up + down) / (1024 ** 2)).toFixed(2) + "MB",
                 expiry_time,
                 active: enable,
-                port,
-                total_volume: (totalGB / (1024 ** 3)).toFixed(2) + "GB",
+                protocol,
+                total_volume: (total / (1024 ** 3)).toFixed(2) + "GB",
                 creator: user[0].name,
                 service_id,
-                is_grpc
             }
         }
         catch {
@@ -206,11 +190,11 @@ router.get("/notifications", midels.check_client, async (req, res) => {
 })
 
 
-router.get("/seen_notification", midels.check_client,async (req, res) => {
+router.get("/seen_notification", midels.check_client, async (req, res) => {
     const { user } = req.body
     const { user_id } = user
     await User.findOneAndUpdate({ user_id }, { $set: { last_notification_seen: Date.now() } })
-    res_handler.success(res,"انجام شد",{})
+    res_handler.success(res, "انجام شد", {})
 })
 
 

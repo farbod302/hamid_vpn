@@ -22,52 +22,17 @@ router.post("/get_service_traffic", async (req, res) => {
     try {
         const { connection_link } = req.body
 
-        if (connection_link.indexOf("type=grpc") > -1) {
-            const email = connection_link.slice(-9)
-            const selected_service = await Service.findOne({ grpc_client_email: email })
-            const { server_id } = selected_service
-            const data = await all_servers.get_client_data({ server_id, client_email: email })
-            const { total, up, down, expiryTime } = data[0]
-            return res_handler.success(res, "", {
-                total: total,
-                used: up + down,
-                expiryTime
-            })
-        }
-
-        if (connection_link.startsWith("vless") && connection_link.startsWith("vmess")) return res_handler.failed(res, "INVALID_LINK")
-        const protocol = connection_link.startsWith("vless") ? "vless" : "vmess"
-        if (protocol === "vless") {
-            let url = connection_link.split("@")[1]
-            const server_url = url.split(":")[0]
-            const port = url.split(":")[1].split("?")[0]
-            const selected_server = await Server.findOne({ url: { $regex: server_url } })
-            const { server_id } = selected_server
-            const servers_services = await all_servers.get_all_services({ server_id })
-            const selected_service = servers_services.find(e => e.port == port)
-            const { up, down, settings, expiryTime } = selected_service
-            const { totalGB } = settings.clients[0]
-            res_handler.success(res, "", {
-                total: totalGB,
-                used: up + down,
-                expiryTime
-            })
-        } else {
-            const base_64 = connection_link.split("//")[1]
-            const data = JSON.parse(atob(base_64))
-            const { port, add: server_url } = data
-            const selected_server = await Server.findOne({ url: { $regex: server_url } })
-            const { server_id } = selected_server
-            const servers_services = await all_servers.get_all_services({ server_id })
-            const selected_service = servers_services.find(e => e.port == port)
-            const { up, down, settings, expiryTime } = selected_service
-            const { totalGB } = settings.clients[0]
-            res_handler.success(res, "", {
-                total: totalGB,
-                used: up + down,
-                expiryTime
-            })
-        }
+        const splitted=connection_link.split("#")
+        const email=splitted.slice(-1)[0].split("-").slice(-2).join("-")
+        const selected_service = await Service.findOne({ client_email: email })
+        const { server_id } = selected_service
+        const data = await all_servers.get_client_data({ server_id, client_email: email })
+        const { total, up, down, expiryTime } = data[0]
+        return res_handler.success(res, "", {
+            total: total,
+            used: up + down,
+            expiryTime
+        })
     }
     catch (err) {
         console.log({ err });

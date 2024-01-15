@@ -15,6 +15,7 @@ const all_servers = require("../container/all_servers")
 const fs = require("fs")
 const server_class = require("../container/server_handler")
 const Ticket = require("../db/ticket")
+const Activity = require("../db/activites")
 
 //post requests
 
@@ -42,8 +43,9 @@ router.post("/sign_new_client", midels.check_admin, async (req, res) => {
         phone,
         name
     }
-    new User(new_client).save()
+    await new User(new_client).save()
     res_handler.success(res, "کاربر با موفقیت ثبت شد")
+    helper.add_activity(`نمایندگی جدید ${name} اضافه شد`)
 })
 
 
@@ -75,6 +77,7 @@ router.post("/add_credit", midels.check_admin, async (req, res) => {
     }
     new Notification(new_notification).save()
 
+
 })
 
 
@@ -90,8 +93,9 @@ router.post("/block_client", midels.check_admin, async (req, res) => {
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { active, user_id } = req.body
-    await User.findOneAndUpdate({ user_id }, { $set: { active } })
+    const user = await User.findOneAndUpdate({ user_id }, { $set: { active } })
     res_handler.success(res, "وضعیت کاربر با موفقیت تغییر کرد", {})
+    helper.add_activity(` ${user.user_name} :نمایندگی ${active ? "فعال" : "غیر فعال"} شد`)
 
 
 })
@@ -114,7 +118,7 @@ router.post("/add_plan", midels.check_admin, async (req, res) => {
         plan_id: uid(5),
         dis, price, duration, volume, grpc
     }
-    new Plan(new_plan).save()
+    await new Plan(new_plan).save()
 
     const new_notification = {
         rasivers: ["all"],
@@ -146,8 +150,9 @@ router.post("/edit_plan", midels.check_admin, async (req, res) => {
         dis, price, duration, volume, grpc
     }
 
-    await Plan.findOneAndReplace({ plan_id }, new_plan)
+    const plan = await Plan.findOneAndReplace({ plan_id }, new_plan)
     res_handler.success(res, "پلن ویرایش شد", {})
+    helper.add_activity(`پلن فروش: ${plan.dis} ویرایش شد`)
 
 
 })
@@ -161,7 +166,8 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
             "password",
             "dis",
             "capacity",
-            "grpc_id"
+            "grpc_id",
+            "tunnel_id"
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
@@ -171,7 +177,7 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
         password,
         dis,
         capacity,
-        grpc_id
+        grpc_id, tunnel_id
     } = req.body
 
     const new_server_class = new server_class({ url, user_name, password: helper.encrypt(password) })
@@ -184,9 +190,10 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
             dis,
             capacity,
             grpc_id,
-            server_id: uid(5)
+            server_id: uid(5),
+            tunnel_id
         }
-        new Server(new_server).save()
+        await new Server(new_server).save()
         res_handler.success(res, "سرور جدید اضافه شد", {})
         const new_notification = {
             rasivers: ["all"],
@@ -204,6 +211,29 @@ router.post("/add_server", midels.check_admin, async (req, res) => {
 })
 
 
+router.post("/delete_notification", midels.check_admin, async (req, res) => {
+    const valid_inputs = helper.check_inputs(
+        [
+            "notification_id",
+            "is_admin_note"
+        ], req.body || {}
+    )
+    if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
+    const { notification_id, is_admin_note } = req.body
+    if (is_admin_note) {
+        const new_admin_note = {
+            msg: "",
+            expire_date: Date.now() - 100
+        }
+        fs.writeFileSync(`${__dirname}/../admin_msg.json`, JSON.stringify(new_admin_note))
+    } else {
+        await Notification.findByIdAndDelete(notification_id)
+    }
+    res_handler.success(res, "اعلان حذف شد", {})
+
+})
+
+
 router.post("/edit_server", midels.check_admin, async (req, res) => {
 
     const valid_inputs = helper.check_inputs(
@@ -213,7 +243,9 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
             "password",
             "dis",
             "capacity",
-            "server_id"
+            "server_id",
+            "grpc_id",
+            "tunnel_id"
         ], req.body || {}
     )
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
@@ -223,7 +255,9 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
         password,
         dis,
         capacity,
-        server_id
+        server_id,
+        grpc_id,
+        tunnel_id
     } = req.body
     const new_server_class = new server_class({ url, user_name, password: helper.encrypt(password) })
 
@@ -238,7 +272,9 @@ router.post("/edit_server", midels.check_admin, async (req, res) => {
             dis,
             capacity,
             server_id,
-            capacity_used
+            capacity_used,
+            grpc_id,
+            tunnel_id
         }
 
         await Server.findOneAndReplace({ server_id }, new_server)
@@ -347,44 +383,18 @@ router.post("/add_service", midels.check_client, async (req, res) => {
         if (price > credit) return res_handler.failed(res, "NOT_ENOUGH_CREDIT")
     }
 
-    const { volume, duration, grpc } = selected_plan
+    const { volume, duration } = selected_plan
 
     const new_service = {
         expire_date: duration == 0 ? 0 : Date.now() + (duration * 1000 * 60 * 60 * 24),
         flow: volume,
         server_id,
-        protocol: grpc ? "grpc" : protocol,
+        protocol,
         name
     }
 
     const result = await all_servers.create_service(new_service)
-    if (result.is_grpc) {
-        const { id, expiryTime, client_email } = result
-        const service_to_save = {
-            service_id: uid(6),
-            service_id_on_server: id,
-            creator_id: req.body.user.user_id,
-            plan_id: plan_id,
-            volume,
-            name,
-            server_id: server_id,
-            protocol: "grpc",
-            credit: selected_plan.price,
-            start_date: Date.now(),
-            end_date: expiryTime,
-            is_grpc: true,
-            grpc_client_email: client_email
-        }
-
-        new Service(service_to_save).save()
-        res_handler.success(res, "سرویس با موفقیت ایجاد شد", result)
-        if (access === 0) {
-            await User.findOneAndUpdate({ user_id }, { $inc: { credit: selected_plan.price * -1 } })
-        }
-        await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1, capacity_used: 1 } })
-        return
-    }
-    const { id, expiryTime } = result
+    const { id, expiryTime, client_email } = result
     const service_to_save = {
         service_id: uid(6),
         service_id_on_server: id,
@@ -396,14 +406,19 @@ router.post("/add_service", midels.check_client, async (req, res) => {
         protocol,
         credit: selected_plan.price,
         start_date: Date.now(),
-        end_date: expiryTime
+        end_date: expiryTime,
+        client_email: client_email
     }
 
     new Service(service_to_save).save()
     res_handler.success(res, "سرویس با موفقیت ایجاد شد", result)
     if (access === 0) {
         await User.findOneAndUpdate({ user_id }, { $inc: { credit: selected_plan.price * -1 } })
+    }
+    await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1, capacity_used: 1 } })
 
+    if (access === 0) {
+        await User.findOneAndUpdate({ user_id }, { $inc: { credit: selected_plan.price * -1 } })
         const new_transaction = {
             transaction_id: uid(8),
             credit: selected_plan.price * -1,
@@ -417,6 +432,8 @@ router.post("/add_service", midels.check_client, async (req, res) => {
 
     }
     await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: -1, capacity_used: 1 } })
+    const selected_user=await User.findOne({user_id})
+    new Activity({note:`کاربر ${selected_user.name} یک سرویس جدید ایجاد کرد`})
 
 })
 
@@ -436,7 +453,7 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
 
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed("INVALID_SERVICE")
-    const { server_id, service_id_on_server, creator_id, is_grpc, grpc_client_email } = selected_service
+    const { server_id, service_id_on_server, creator_id, client_email ,protocol} = selected_service
 
     const { access, user_id } = user
 
@@ -446,37 +463,30 @@ router.post("/edit_service", midels.check_admin, async (req, res) => {
 
     if (server_id === new_server_id) {
         const result = await all_servers.edit_service_name({
-            name, service_id_on_server, server_id, is_grpc
+            name, service_id_on_server, server_id, client_email
         })
         if (result) {
-            await Service.findOneAndUpdate({ service_id }, { $set: { name } })
+            await Service.findOneAndUpdate({ client_email }, { $set: { client_email: result,name:name } })
             return res_handler.success(res, "سرویس با موفقیت ویرایش شد", result)
         }
     } else {
-        const server_cur_status = await all_servers.get_service_data({ server_id, service_id_on_server })
-        const { expiryTime, protocol, up, down } = server_cur_status
-        await all_servers.delete_service({ server_id, service_id_on_server, is_grpc, grpc_client_email })
-        console.log({
-            volume: selected_service.volume,
-            up, down
-        });
+        const server_cur_status = await all_servers.get_service_data({ server_id, service_id_on_server,client_email })
+        const { expiryTime, up, down } = server_cur_status
+        await all_servers.delete_service({ server_id, service_id_on_server, client_email })
+       
         const result = await all_servers.create_service({
             server_id: new_server_id,
             flow: selected_service.volume === 0 ? 0 : ((selected_service.volume) - ((up + down) / (1040 ** 3))),
             expire_date: expiryTime,
             name,
-            protocol: is_grpc ? "grpc" : protocol
+            protocol
         })
         if (!result) return res_handler.failed(res, "UNKNOWN_ERROR")
-        console.log({ result });
         const { id } = result
         await Service.findOneAndUpdate({ service_id }, { $set: { service_id_on_server: id, server_id: new_server_id } })
         await Server.findOneAndUpdate({ server_id }, { $inc: { capacity: 1 } })
         await Server.findOneAndUpdate({ server_id: new_server_id }, { $inc: { capacity: -1 } })
-        if (is_grpc) {
-            await Service.findOneAndUpdate({ service_id }, { $set: { grpc_client_email: result.client_email || "" } })
-
-        }
+        await Service.findOneAndUpdate({ service_id }, { $set: { client_email: result.client_email || "" } })
         return res_handler.success(res, "سرویس با موفقیت ویرایش شد", result)
 
     }
@@ -512,13 +522,10 @@ router.post("/disable_enable_service", midels.check_client, async (req, res) => 
     const { op, service_id } = req.body
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed("INVALID_SERVICE")
-    const { service_id_on_server, server_id, is_grpc, grpc_client_email, end_date } = selected_service
-    if (end_date < Date.now())return res_handler.failed(res,"SERVICE_EXPIRE")
-        if (is_grpc) {
-            await all_servers.disable_enable_grpc_service({ server_id, service_id_on_server, op, grpc_client_email })
-        } else {
-            await all_servers.disable_enable_service({ server_id, service_id_on_server, op })
-        }
+    const { service_id_on_server, server_id, client_email, end_date } = selected_service
+    if (end_date < Date.now()) return res_handler.failed(res, "SERVICE_EXPIRE")
+    await all_servers.disable_enable_service({ server_id, service_id_on_server, op, client_email })
+   
     res_handler.success(res, "تغییرات با موفقیت انجام شد",)
 
 
@@ -557,14 +564,14 @@ router.post("/change_link", midels.check_client, async (req, res) => {
     if (!valid_inputs) return res_handler.failed(res, "INVALID_INPUTS")
     const { service_id, user } = req.body
     const selected_service = await Service.findOne({ service_id })
-    const { server_id, service_id_on_server, creator_id, is_grpc, grpc_client_email } = selected_service
+    const { server_id, service_id_on_server, creator_id, is_grpc, client_email } = selected_service
 
     const { access, user_id } = user
     if (access === 0) {
         if (user_id !== creator_id) return res_handler.failed(res, "ACCESS_DENY")
     }
 
-    const result = await all_servers.change_link({ server_id, service_id_on_server, is_grpc, grpc_client_email })
+    const result = await all_servers.change_link({ server_id, service_id_on_server, is_grpc, client_email })
     res_handler.success(res, "تغییرات با موفقیت انجام شد", result)
 
 
@@ -582,7 +589,7 @@ router.post("/reset_service", midels.check_client, async (req, res) => {
     const { service_id, user } = req.body
     const selected_service = await Service.findOne({ service_id })
     if (!selected_service) return res_handler.failed(res, "INVALID_SERVICE")
-    const { server_id, service_id_on_server, plan_id, is_grpc, grpc_client_email, name } = selected_service
+    const { server_id, service_id_on_server, plan_id, is_grpc, client_email, name } = selected_service
     const selected_plan = await Plan.findOne({ plan_id })
     const { price } = selected_plan
     const { access, user_id } = user
@@ -595,7 +602,7 @@ router.post("/reset_service", midels.check_client, async (req, res) => {
 
     const { duration, volume } = selected_plan
     const new_ex_date = duration == 0 ? 0 : Date.now() + (duration * 1000 * 60 * 60 * 24)
-    const result = await all_servers.reset_service({ server_id, service_id_on_server, new_ex_date, is_grpc, grpc_client_email, volume })
+    const result = await all_servers.reset_service({ server_id, service_id_on_server, new_ex_date, is_grpc, client_email, volume })
     res_handler.success(res, "سرویس تمدید شد", result)
     if (access === 0) {
         await User.findOneAndUpdate({ user_id }, { $inc: { credit: price * -1 } })

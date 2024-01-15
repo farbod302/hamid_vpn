@@ -11,6 +11,7 @@ const server = mongoose.Schema({
     capacity_used: { type: Number, default: 0 },
     active: { type: Boolean, default: true },
     grpc_id: Number,
+    tunnel_id: Number,
     delete: { type: Boolean, default: false }
 
 })
