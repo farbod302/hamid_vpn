@@ -20,19 +20,64 @@ router.get("/link/:service_id", async (req, res) => {
     const selected_service = await Service.findOne({ service_id })
     const { client_email, service_id_on_server, protocol, server_id } = selected_service
     const links = {
-        grpc: "vless://$id$@cf.w4llbreaker.com:$port$?type=grpc&serviceName=&security=tls&fp=chrome&alpn=http%2F1.1%2Ch2&sni=test.wallbreaker.ir#grpc-$email$",
-        tunnel: "vless://$id$@$server_url$:$port$?type=tcp&path=%2F&host=rh.w4llbreaker.com&headerType=http&security=none#tunnel-$email$",
-        ws: "vless://$id$@cf.w4llbreaker.com:$port$?type=ws&path=%2F&host=test.wallbreaker.ir&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&sni=test.wallbreaker.ir#ws-$email$"
+        grpc: "vless://$id$@$dest$:$port$?type=grpc&serviceName=&security=tls&fp=chrome&alpn=http%2F1.1%2Ch2&sni=$sni$#grpc-$email$",
+        tunnel: "vless://$id$@$server_url$:$port$?type=tcp&path=%2F&host=$host$&headerType=http&security=none#tunnel-$email$",
+        ws: "vless://$id$@$dest$:$port$?type=ws&path=%2F&host=$host$&security=tls&fp=chrome&alpn=h2%2Chttp%2F1.1&sni=$sni$#ws-$email$"
     }
-    const service_data = await all_servers.get_all_services({ server_id })
 
+
+    const service_data = await all_servers.get_all_services({ server_id })
     const selected_inbound = service_data.find(e => e.id === service_id_on_server)
+    let custom_keys = []
+    if (protocol === "grpc") {
+        const { externalProxy, tlsSettings } = selected_inbound.streamSettings
+        const { dest } = externalProxy[0]
+        const { serverName } = tlsSettings
+        custom_keys.push({
+            key: "sni",
+            value: serverName
+        })
+        custom_keys.push({
+            key: "dest",
+            value: dest
+        })
+    }
+
+    if (protocol === "tunnel") {
+        let host = selected_inbound.streamSettings.tcpSettings.header.request.headers.host ||
+            selected_inbound.streamSettings.tcpSettings.header.request.headers.Host
+            host=host[0]
+        custom_keys.push({
+            key: "host",
+            value: host
+        })
+    }
+
+    if (protocol === "ws") {
+        const { externalProxy, tlsSettings, wsSettings } = selected_inbound.streamSettings
+        const { dest } = externalProxy[0]
+        const { serverName } = tlsSettings
+        console.log(wsSettings);
+        const host = wsSettings.headers.host || wsSettings.headers.Host
+        custom_keys.push({
+            key: "sni",
+            value: serverName
+        })
+        custom_keys.push({
+            key: "dest",
+            value: dest
+        })
+        custom_keys.push({
+            key: "host",
+            value: host
+        })
+    }
     const { port, settings } = selected_inbound
     const { clients } = settings
     const selected_client = clients.find(e => e.email === client_email)
     const { id } = selected_client
-    const server_info = await Server.findOne({ server_id })
-    const { url } = server_info
+    const { externalProxy } = selected_inbound.streamSettings
+    const { dest } = externalProxy[0]
     const keys_to_replace = [
         {
             key: "port",
@@ -40,7 +85,7 @@ router.get("/link/:service_id", async (req, res) => {
         },
         {
             key: "server_url",
-            value: url.replace("http://","").replace("https://","")
+            value: dest
         },
         {
             key: "email",
@@ -55,7 +100,7 @@ router.get("/link/:service_id", async (req, res) => {
     const temp_link = links[protocol]
     const splitted = temp_link.split(/[$$]/i)
 
-    keys_to_replace.forEach(k => {
+    keys_to_replace.concat(custom_keys).forEach(k => {
         const index = splitted.indexOf(k.key)
         if (index === -1) return
         splitted[index] = k.value
@@ -63,9 +108,14 @@ router.get("/link/:service_id", async (req, res) => {
     })
     const connection_url = splitted.join("")
     const qr_code = await helper.generate_qr_code(connection_url)
+
+    const sub_url = `https://server.netfan.org/sub/${client_email}`
+    const sub_code = await helper.generate_qr_code(sub_url)
     res_handler.success(res, "", {
         link: connection_url,
-        qrcode: qr_code
+        qrcode: qr_code,
+        sub_code,
+        sub_link: sub_url
     })
 })
 
@@ -114,18 +164,23 @@ router.get("/services", midels.check_client, async (req, res) => {
 
     ])
 
-    const services_status = user_services.map(async service => {
+    let compleat_data = []
+
+
+    for (let service of user_services) {
         const { server_id, service_id_on_server, is_grpc, client_email } = service
-        const server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server, is_grpc, client_email })
-        console.log({ server_side_data });
-        if (!server_side_data) return null
-        return {
+        let server_side_data = await all_servers.get_service_data({ server_id, service_id_on_server, is_grpc, client_email })
+        if (!server_side_data) {
+            // await Service.findOneAndUpdate({ client_email }, { $set: { delete: true } })
+            // await Server.findOneAndUpdate({ server_id }, { $inc: { capacity_used: -1 } })
+            continue
+        }
+        compleat_data.push({
             ...service,
             server_side_data,
-        }
-    })
+        })
+    }
 
-    let compleat_data = await Promise.all(services_status)
     compleat_data = compleat_data.filter(e => e)
 
     const clean_data = compleat_data.map(service => {
@@ -147,7 +202,8 @@ router.get("/services", midels.check_client, async (req, res) => {
                 service_id,
             }
         }
-        catch {
+        catch (err) {
+            console.log(err);
             return null
         }
 
@@ -171,6 +227,7 @@ router.get("/notifications", midels.check_client, async (req, res) => {
     const { user } = req.body
     const { user_id } = user
     const user_from_db = await User.findOne({ user_id })
+    if (!user_from_db) return res_handler.failed(res, "INVALID_TOKEN")
     const { last_notification_seen } = user_from_db
     const user_notifications = await Notification.aggregate([
         {
@@ -274,25 +331,34 @@ router.get("/transactions", midels.check_client, async (req, res) => {
 })
 
 
-router.get("/inactive_services", midels.check_admin, async (req, res) => {
+router.get("/inactive_services", midels.check_client, async (req, res) => {
 
-    const inactive_services = await Service.aggregate([{ $match: { end_date: { $lt: Date.now(), $gt: 0 }, delete: false, active: true } },
-    {
-        $lookup: {
-            from: "servers",
-            localField: "server_id",
-            foreignField: "server_id",
-            as: "server"
-        }
-    },
-    {
-        $lookup: {
-            from: "users",
-            localField: "creator_id",
-            foreignField: "user_id",
-            as: "user"
-        }
-    },
+    const { user } = req.body
+    const { access, user_id } = user
+
+
+    const query = { $match: { end_date: { $lt: Date.now(), $gt: 0 }, delete: false, active: true } }
+    if (access === 0) {
+        query.$match.creator_id = user_id
+    }
+
+    const inactive_services = await Service.aggregate([query,
+        {
+            $lookup: {
+                from: "servers",
+                localField: "server_id",
+                foreignField: "server_id",
+                as: "server"
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "creator_id",
+                foreignField: "user_id",
+                as: "user"
+            }
+        },
 
     ])
 
@@ -313,10 +379,15 @@ router.get("/inactive_services", midels.check_admin, async (req, res) => {
 })
 
 
-router.get("/event",midels.check_admin,async (req,res)=>{
-    const events=await Activity.find()
-    res_handler.success(res,"",{events})
+router.get("/event", midels.check_client, async (req, res) => {
+    const { user } = req.body
+    const { user_id } = user
+    const events = await Activity.find({ user_id })
+    res_handler.success(res, "", { events })
 })
+
+
+
 
 
 

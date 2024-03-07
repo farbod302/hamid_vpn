@@ -27,10 +27,11 @@ const helper = {
     decrypt(hash) {
         return encryptor.decrypt(hash)
     },
-    add_activity(note) {
+    add_activity(note,user_id) {
         const new_activity = {
             note,
-            date: Date.now()
+            date: Date.now(),
+            user_id
         }
         new Activity(new_activity).save()
     },

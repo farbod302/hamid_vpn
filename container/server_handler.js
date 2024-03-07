@@ -19,7 +19,6 @@ const Server = class {
             username: this.user_name,
             password: this.password
         })
-
         const cookie = data.headers["set-cookie"].splice("session=")[1].split(";")[0]
 
         this.cookie = cookie

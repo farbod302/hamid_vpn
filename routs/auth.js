@@ -13,7 +13,8 @@ router.post("/log_in", async (req, res) => {
     const { user_name, password } = req.body
     const selected_user = await User.findOne({
         user_name,
-        password: shortHash(password)
+        password: shortHash(password),
+        delete:false
     })
     if (!selected_user) return res_handler.failed(res, "AUTH_FAIL")
     const { access, name, user_id, active } = selected_user

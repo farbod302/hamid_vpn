@@ -18,7 +18,8 @@ const all_servers = {
                     server_class: init_server
                 })
             }
-            catch {
+            catch (err){
+                console.log({err});
                 continue
             }
         }

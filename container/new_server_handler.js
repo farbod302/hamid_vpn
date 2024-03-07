@@ -13,14 +13,16 @@ const Server = class {
         this.server_id = server_id
         this.grpc_id = grpc_id
         this.tunnel_id = tunnel_id
+        this.inbound_data = null
+        this.last_update = 0
     }
     async init_server() {
         const data = await axios.post(`${this.url}/login`, {
             username: this.user_name,
             password: this.password
         })
-
-        const cookie = data.headers["set-cookie"].splice("session=")[1].split(";")[0]
+        const selected_session=data.headers["set-cookie"].slice(-1)[0]
+        const cookie = selected_session.split(";")[0]
 
         this.cookie = cookie
 
@@ -83,6 +85,18 @@ const Server = class {
 
     }
 
+    async get_inbounds_data() {
+        if (this.last_update + (1000 * 60) < Date.now() || !this.inbound_data) {
+            const data = await this.get_request(`panel/api/inbounds/list`)
+            this.inbound_data = data
+            this.last_update = Date.now()
+            return data
+        } else {
+            console.log("use cash");
+            return this.inbound_data
+        }
+    }
+
     async detect_protocols() {
         const inbounds = await this.get_request(`panel/api/inbounds/list`)
         let protocols = []
@@ -97,7 +111,7 @@ const Server = class {
         this.protocols = protocols
     }
     async get_all_services() {
-        const data = await this.get_request("panel/api/inbounds/list")
+        const data = await this.get_inbounds_data()
         return data
     }
 
@@ -133,9 +147,9 @@ const Server = class {
         new_client.clients[0].email = client_email
         new_client.clients[0].totalGB = flow * (1024 ** 3)
         new_client.clients[0].expiryTime = expire_date
-        new_client.clients[0].subId = name
+        new_client.clients[0].subId = uid(5)
         const s_protocol = this.protocols.find(e => e.protocol === protocol)
-
+        if (!s_protocol) return false
         await this.post_request("panel/inbound/addClient", this.clean_to_send({
             settings: { clients: new_client.clients },
             id: s_protocol.id,
@@ -145,18 +159,23 @@ const Server = class {
     }
 
     async edit_service_name({ name, service_id_on_server, client_email }) {
-        const cur_status = await this.get_request(`panel/api/inbounds/get/${service_id_on_server}`)
-        if (!cur_status) return false
-        const clients = [...cur_status[0].settings.clients]
-        const selected_client = clients.find(e => e.email === client_email)
-        const new_email = `${name}-${uid(4)}`
-        selected_client["email"] = new_email
-        const new_body = {
-            id: service_id_on_server,
-            settings: { clients: [{ ...selected_client }] }
+        try {
+            const cur_status = await this.get_request(`panel/api/inbounds/get/${service_id_on_server}`)
+            if (!cur_status) return false
+            const clients = [...cur_status[0].settings.clients]
+            const selected_client = clients.find(e => e.email === client_email)
+            const new_email = `${name}-${uid(4)}`
+            selected_client["email"] = new_email
+            const new_body = {
+                id: service_id_on_server,
+                settings: { clients: [{ ...selected_client }] }
+            }
+            const result = await this.post_request(`panel/api/inbounds/updateClient/${selected_client.id}`, this.clean_to_send(new_body))
+            return result.data ? new_email : false
         }
-        const result = await this.post_request(`panel/api/inbounds/updateClient/${selected_client.id}`, this.clean_to_send(new_body))
-        return result.data ? new_email : false
+        catch {
+            return false
+        }
     }
 
     async get_client_uid(client_email) {
@@ -179,23 +198,28 @@ const Server = class {
 
 
     async get_service({ client_email, service_id_on_server }) {
-        const services = await this.get_request(`panel/api/inbounds/list`)
-        console.log({ client_email, service_id_on_server });
-        const { clientStats, settings } = services.find(e => e.id === service_id_on_server)
-        const { clients } = settings
-        const client_status = clients.find(e => e.email === client_email)
-        const { enable } = client_status
-        const selected_client = clientStats.find(e => e.email === client_email)
-        const { up, down, expiryTime, total, id } = selected_client
-        const server_side_data = {
-            name: client_email,
-            id,
-            port: "",
-            total,
-            enable,
-            up, down, expiryTime
+        try {
+            const services = await this.get_inbounds_data()
+            const { clientStats, settings } = services.find(e => e.id === service_id_on_server)
+            const { clients } = settings
+            const client_status = clients.find(e => e.email === client_email)
+            const { enable } = client_status
+            const selected_client = clientStats.find(e => e.email === client_email)
+            const { up, down, expiryTime, total, id } = selected_client
+            const server_side_data = {
+                name: client_email,
+                id,
+                port: "",
+                total,
+                enable,
+                up, down, expiryTime
+            }
+            return server_side_data
         }
-        return server_side_data
+        catch (err) {
+            console.log(err);
+            return false
+        }
     }
 
 
